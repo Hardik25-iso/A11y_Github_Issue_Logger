@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: a11y-issue-logger-api
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt && python -m playwright install chromium --with-deps
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: AI_PROVIDER
+        value: template
+      - key: ENABLE_LIVE_SCAN
+        value: "false"
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GITHUB_REPO_OWNER
+        sync: false
+      - key: GITHUB_REPO_NAME
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false

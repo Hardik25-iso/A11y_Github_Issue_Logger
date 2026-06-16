@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Test artefacts
+playwright-report/
+test-results/
+coverage/
+
+# IDE / local tooling
+.claude/
+.vscode/
+
+# Internal planning docs
+BACKGROUND.md
+PROGRESS.md
+A11y_GitHub_Issue_Logger_Requirements.docx
+
