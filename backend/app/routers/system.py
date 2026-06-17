@@ -24,7 +24,7 @@ async def health() -> dict:
         try:
             import importlib
             _pw = importlib.import_module(_PW_MOD)
-            async with getattr(_pw, "async_play" + "wright")() as p:
+            async with _pw.async_playwright() as p:
                 browser = await p.chromium.launch()
                 await browser.close()
             checks["browser"] = "ok"

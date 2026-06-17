@@ -30,8 +30,7 @@ WCAG_URLS = {
 
 BLOCKED_RESOURCE_TYPES = {"font", "image", "media"}
 
-# Module name split so build-platform scanners don't trigger native browser install
-_PW_MOD = "play" + "wright.async_api"
+_PW_MOD = "playwright.async_api"
 
 
 async def init_browser_pool() -> None:
@@ -41,7 +40,7 @@ async def init_browser_pool() -> None:
     try:
         import importlib
         _pw = importlib.import_module(_PW_MOD)
-        _pw_instance = await getattr(_pw, "async_play" + "wright")().start()
+        _pw_instance = await _pw.async_playwright().start()
         _browser = await _pw_instance.chromium.launch()
         log_info("Browser pool initialised")
     except Exception as exc:
@@ -188,7 +187,7 @@ async def _run_axe(url: str, axe_path: Path) -> list[dict]:
     if _browser is None or not _browser.is_connected():
         import importlib
         _pw = importlib.import_module(_PW_MOD)
-        pw = await getattr(_pw, "async_play" + "wright")().start()
+        pw = await _pw.async_playwright().start()
         browser = await pw.chromium.launch()
         own_browser = True
     else:
