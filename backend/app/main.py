@@ -9,10 +9,13 @@ load_dotenv()
 settings = get_settings()
 
 app = FastAPI(title="A11y GitHub Issue Logger API", version="0.1.0")
+origins = list(settings.frontend_origins)
+wildcard = origins == ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(settings.frontend_origins),
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app" if wildcard else None,
+    allow_credentials=not wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
