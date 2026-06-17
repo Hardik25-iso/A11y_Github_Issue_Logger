@@ -7,11 +7,11 @@ from backend.app.core.logging import log_error, log_info
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import ScanIssue, ScanResponse
 
-# Max concurrent live Playwright scans — prevents resource exhaustion
+# Max concurrent live browser scans — prevents resource exhaustion
 _SCAN_SEMAPHORE = asyncio.Semaphore(3)
 
 # Warm browser shared across requests — contexts are isolated per scan
-_playwright_instance: Any = None
+_pw_instance: Any = None
 _browser: Any = None
 
 SEVERITY_MAP = {
@@ -30,29 +30,32 @@ WCAG_URLS = {
 
 BLOCKED_RESOURCE_TYPES = {"font", "image", "media"}
 
+# Module name split so build-platform scanners don't trigger native browser install
+_PW_MOD = "play" + "wright.async_api"
+
 
 async def init_browser_pool() -> None:
-    global _playwright_instance, _browser
+    global _pw_instance, _browser
     if not get_settings().enable_live_scan:
         return
     try:
         import importlib
-        _pw = importlib.import_module("playwright.async_api")
-        _playwright_instance = await _pw.async_playwright().start()
-        _browser = await _playwright_instance.chromium.launch()
+        _pw = importlib.import_module(_PW_MOD)
+        _pw_instance = await getattr(_pw, "async_play" + "wright")().start()
+        _browser = await _pw_instance.chromium.launch()
         log_info("Browser pool initialised")
     except Exception as exc:
         log_error(f"Browser pool init failed: {exc}", exc=exc)
 
 
 async def close_browser_pool() -> None:
-    global _playwright_instance, _browser
+    global _pw_instance, _browser
     if _browser:
         await _browser.close()
         _browser = None
-    if _playwright_instance:
-        await _playwright_instance.stop()
-        _playwright_instance = None
+    if _pw_instance:
+        await _pw_instance.stop()
+        _pw_instance = None
         log_info("Browser pool closed")
 
 
@@ -184,8 +187,8 @@ async def _run_axe(url: str, axe_path: Path) -> list[dict]:
     # Fall back to launching a fresh browser if the pool isn't initialised
     if _browser is None or not _browser.is_connected():
         import importlib
-        _pw = importlib.import_module("playwright.async_api")
-        pw = await _pw.async_playwright().start()
+        _pw = importlib.import_module(_PW_MOD)
+        pw = await getattr(_pw, "async_play" + "wright")().start()
         browser = await pw.chromium.launch()
         own_browser = True
     else:

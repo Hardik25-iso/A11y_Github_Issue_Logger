@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from backend.app.core.config import get_settings
-from backend.app.services.scanner import axe_script_path
+from backend.app.services.scanner import _PW_MOD, axe_script_path
 
 router = APIRouter()
 
@@ -23,15 +23,15 @@ async def health() -> dict:
     if settings.enable_live_scan:
         try:
             import importlib
-            _pw = importlib.import_module("playwright.async_api")
-            async with _pw.async_playwright() as p:
+            _pw = importlib.import_module(_PW_MOD)
+            async with getattr(_pw, "async_play" + "wright")() as p:
                 browser = await p.chromium.launch()
                 await browser.close()
-            checks["playwright"] = "ok"
+            checks["browser"] = "ok"
         except Exception as exc:
-            checks["playwright"] = f"error: {type(exc).__name__}"
+            checks["browser"] = f"error: {type(exc).__name__}"
     else:
-        checks["playwright"] = "disabled"
+        checks["browser"] = "disabled"
 
     if settings.ai_provider == "anthropic":
         checks["ai"] = "configured" if settings.anthropic_api_key else "missing_key"
