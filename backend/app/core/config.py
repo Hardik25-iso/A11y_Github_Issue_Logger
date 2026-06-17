@@ -37,7 +37,7 @@ class Settings:
             ollama_model=os.getenv("OLLAMA_MODEL", "qwen3:8b"),
             ai_timeout_seconds=float(os.getenv("AI_TIMEOUT_SECONDS", "30")),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
-            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
+            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
             github_token=os.getenv("GITHUB_TOKEN", ""),
             github_repo_owner=os.getenv("GITHUB_REPO_OWNER", ""),
             github_repo_name=os.getenv("GITHUB_REPO_NAME", ""),

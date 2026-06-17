@@ -1,13 +1,18 @@
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from backend.app.core.config import get_settings
-from backend.app.core.logging import log_error
+from backend.app.core.logging import log_error, log_info
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import ScanIssue, ScanResponse
 
 # Max concurrent live Playwright scans — prevents resource exhaustion
 _SCAN_SEMAPHORE = asyncio.Semaphore(3)
+
+# Warm browser shared across requests — contexts are isolated per scan
+_playwright_instance: Any = None
+_browser: Any = None
 
 SEVERITY_MAP = {
     "critical": "Critical",
@@ -24,6 +29,30 @@ WCAG_URLS = {
 }
 
 BLOCKED_RESOURCE_TYPES = {"font", "image", "media"}
+
+
+async def init_browser_pool() -> None:
+    global _playwright_instance, _browser
+    if not get_settings().enable_live_scan:
+        return
+    try:
+        from playwright.async_api import async_playwright
+        _playwright_instance = await async_playwright().start()
+        _browser = await _playwright_instance.chromium.launch()
+        log_info("Browser pool initialised")
+    except Exception as exc:
+        log_error(f"Browser pool init failed: {exc}", exc=exc)
+
+
+async def close_browser_pool() -> None:
+    global _playwright_instance, _browser
+    if _browser:
+        await _browser.close()
+        _browser = None
+    if _playwright_instance:
+        await _playwright_instance.stop()
+        _playwright_instance = None
+        log_info("Browser pool closed")
 
 
 def _criterion(tags: list[str]) -> str:
@@ -133,7 +162,7 @@ def axe_script_path() -> Path:
     return Path(__file__).resolve().parents[1] / "assets" / "axe.min.js"
 
 
-async def _guarded_route(route) -> None:
+async def _guarded_route(route: Any) -> None:
     request = route.request
     try:
         validate_resolved_public_url(request.url)
@@ -146,33 +175,53 @@ async def _guarded_route(route) -> None:
     await route.continue_()
 
 
+async def _run_axe(url: str, axe_path: Path) -> list[dict]:
+    """Run axe-core against url, reusing the warm shared browser."""
+    global _browser
+    settings = get_settings()
+
+    # Fall back to launching a fresh browser if the pool isn't initialised
+    if _browser is None or not _browser.is_connected():
+        from playwright.async_api import async_playwright
+        pw = await async_playwright().start()
+        browser = await pw.chromium.launch()
+        own_browser = True
+    else:
+        browser = _browser
+        own_browser = False
+
+    try:
+        context = await browser.new_context()
+        try:
+            page = await context.new_page()
+            await page.route("**/*", _guarded_route)
+            await page.goto(url, wait_until="domcontentloaded", timeout=settings.scan_timeout_ms)
+            validate_resolved_public_url(page.url)
+            await page.add_script_tag(path=str(axe_path))
+            result = await page.evaluate("async () => await axe.run(document)")
+            return result.get("violations", [])
+        finally:
+            await context.close()
+    finally:
+        if own_browser:
+            await browser.close()
+
+
 async def scan_url(url: str) -> ScanResponse:
     settings = get_settings()
     if not settings.enable_live_scan:
         return fallback_scan(url)
 
     try:
-        from playwright.async_api import async_playwright
-
         validate_resolved_public_url(url)
         axe_path = axe_script_path()
         if not axe_path.exists():
             return fallback_scan(url, "Local axe-core bundle is missing; demo results shown.")
 
         async with _SCAN_SEMAPHORE:
-            async with async_playwright() as playwright:
-                browser = await playwright.chromium.launch()
-                try:
-                    page = await browser.new_page()
-                    await page.route("**/*", _guarded_route)
-                    await page.goto(url, wait_until="domcontentloaded", timeout=settings.scan_timeout_ms)
-                    validate_resolved_public_url(page.url)
-                    await page.add_script_tag(path=str(axe_path))
-                    result = await page.evaluate("async () => await axe.run(document)")
-                finally:
-                    await browser.close()
+            violations = await _run_axe(url, axe_path)
 
-        issues = normalize_violations(result.get("violations", []))
+        issues = normalize_violations(violations)
         return ScanResponse(url=url, issues=issues, summary=_summary(issues), source="live")
     except Exception as exc:
         log_error(f"Live scan failed for url={url}: {type(exc).__name__}: {exc}", exc=exc)
