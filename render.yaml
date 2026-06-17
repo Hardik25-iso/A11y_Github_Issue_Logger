@@ -2,11 +2,7 @@ services:
   - type: web
     name: a11y-issue-logger-api
     runtime: python
-    # Install deps then attempt playwright browser install; || true keeps build green
-    # when Render's sandbox blocks the browser download (ENABLE_LIVE_SCAN=false anyway)
-    buildCommand: >
-      pip install -r backend/requirements.txt &&
-      python -m playwright install chromium 2>/dev/null || true
+    buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:

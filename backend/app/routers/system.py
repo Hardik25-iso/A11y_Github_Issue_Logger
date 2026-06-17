@@ -22,8 +22,9 @@ async def health() -> dict:
 
     if settings.enable_live_scan:
         try:
-            from playwright.async_api import async_playwright
-            async with async_playwright() as p:
+            import importlib
+            _pw = importlib.import_module("playwright.async_api")
+            async with _pw.async_playwright() as p:
                 browser = await p.chromium.launch()
                 await browser.close()
             checks["playwright"] = "ok"

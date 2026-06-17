@@ -36,8 +36,9 @@ async def init_browser_pool() -> None:
     if not get_settings().enable_live_scan:
         return
     try:
-        from playwright.async_api import async_playwright
-        _playwright_instance = await async_playwright().start()
+        import importlib
+        _pw = importlib.import_module("playwright.async_api")
+        _playwright_instance = await _pw.async_playwright().start()
         _browser = await _playwright_instance.chromium.launch()
         log_info("Browser pool initialised")
     except Exception as exc:
@@ -182,8 +183,9 @@ async def _run_axe(url: str, axe_path: Path) -> list[dict]:
 
     # Fall back to launching a fresh browser if the pool isn't initialised
     if _browser is None or not _browser.is_connected():
-        from playwright.async_api import async_playwright
-        pw = await async_playwright().start()
+        import importlib
+        _pw = importlib.import_module("playwright.async_api")
+        pw = await _pw.async_playwright().start()
         browser = await pw.chromium.launch()
         own_browser = True
     else:
