@@ -106,7 +106,7 @@ jobs:
         run: npm run build
 
       - name: Run axe against own UI
-        run: npx playwright test e2e/axe-self.spec.js --project=chromium
+        run: npx playwright test e2e/axe-self.spec.js --project=axe
 
   e2e:
     name: E2E — Playwright (Chromium)
@@ -133,8 +133,11 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
+      - name: Build frontend
+        run: npm run build
+
       - name: Run E2E tests
-        run: npm run e2e
+        run: npx playwright test --project=chromium
 
       - name: Upload Playwright report
         if: failure()
