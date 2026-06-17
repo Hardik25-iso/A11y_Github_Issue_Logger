@@ -198,7 +198,7 @@ test("shows generated issue draft", async ({ page }) => {
   await page.getByRole("button", { name: /create from scratch/i }).click();
   await page.getByRole("button", { name: /generate issue/i }).click();
   // generate
-  await expect(page.getByDisplayValue("[A11y][WCAG 1.1.1] Images must have alternative text")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /title/i })).toHaveValue("[A11y][WCAG 1.1.1] Images must have alternative text");
   await expect(page.getByText("Template fallback — AI unavailable")).toBeVisible();
 });
 
