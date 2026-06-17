@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getJson, postJson } from "../services/api";
 
-const originalFetch = global.fetch;
+const originalFetch = globalThis.fetch;
 
 function mockFetch(status, body) {
-  global.fetch = vi.fn().mockResolvedValue({
+  globalThis.fetch = vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
     json: () => Promise.resolve(body),
@@ -12,7 +12,7 @@ function mockFetch(status, body) {
 }
 
 afterEach(() => {
-  global.fetch = originalFetch;
+  globalThis.fetch = originalFetch;
   vi.restoreAllMocks();
 });
 
@@ -43,7 +43,7 @@ describe("postJson", () => {
   it("sends POST with JSON body and Content-Type header", async () => {
     mockFetch(200, { source: "fallback", issues: [] });
     await postJson("/api/scan", { url: "https://example.com" });
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/scan"),
       expect.objectContaining({
         method: "POST",
