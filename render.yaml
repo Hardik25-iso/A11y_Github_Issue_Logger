@@ -7,10 +7,12 @@ services:
     healthCheckPath: /health
     envVars:
       - key: AI_PROVIDER
-        value: anthropic
+        value: groq
       - key: ENABLE_LIVE_SCAN
         value: "false"
       - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
         sync: false
       - key: GITHUB_TOKEN
         sync: false

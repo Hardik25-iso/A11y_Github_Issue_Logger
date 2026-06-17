@@ -11,6 +11,8 @@ class Settings:
     ai_timeout_seconds: float
     anthropic_api_key: str
     anthropic_model: str
+    groq_api_key: str
+    groq_model: str
     github_token: str
     github_repo_owner: str
     github_repo_name: str
@@ -38,6 +40,8 @@ class Settings:
             ai_timeout_seconds=float(os.getenv("AI_TIMEOUT_SECONDS", "30")),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
             anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
+            groq_api_key=os.getenv("GROQ_API_KEY", ""),
+            groq_model=os.getenv("GROQ_MODEL", "gemma2-9b-it"),
             github_token=os.getenv("GITHUB_TOKEN", ""),
             github_repo_owner=os.getenv("GITHUB_REPO_OWNER", ""),
             github_repo_name=os.getenv("GITHUB_REPO_NAME", ""),

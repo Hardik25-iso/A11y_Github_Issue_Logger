@@ -6,7 +6,7 @@ import httpx
 from backend.app.core.config import Settings, get_settings
 from backend.app.core.logging import log_error, log_warning
 
-AIProvider = Literal["ollama", "anthropic"]
+AIProvider = Literal["ollama", "anthropic", "groq"]
 
 
 class AIProviderError(RuntimeError):
@@ -51,6 +51,35 @@ async def _ollama_json(system: str, prompt: str, settings: Settings) -> dict[str
         raise AIProviderError("Ollama request failed") from exc
 
 
+async def _groq_json(system: str, prompt: str, settings: Settings) -> dict[str, Any]:
+    if not settings.groq_api_key:
+        raise AIProviderError("Groq API key is not configured")
+    payload = {
+        "model": settings.groq_model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.1,
+        "max_tokens": 1800,
+        "response_format": {"type": "json_object"},
+    }
+    timeout = httpx.Timeout(connect=5.0, read=settings.ai_timeout_seconds, write=5.0, pool=5.0)
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+            )
+            response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"]
+        return _extract_json(content)
+    except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+        log_warning(f"Groq request failed: {type(exc).__name__}: {exc}")
+        raise AIProviderError("Groq request failed") from exc
+
+
 async def _anthropic_json(system: str, prompt: str, settings: Settings) -> dict[str, Any]:
     if not settings.anthropic_api_key:
         raise AIProviderError("Anthropic API key is not configured")
@@ -84,6 +113,8 @@ def provider_order(settings: Settings) -> list[AIProvider]:
         return ["ollama"]
     if settings.ai_provider == "anthropic":
         return ["anthropic"]
+    if settings.ai_provider == "groq":
+        return ["groq"]
     return []
 
 
@@ -93,6 +124,8 @@ async def generate_json(system: str, prompt: str) -> tuple[dict[str, Any], AIPro
         try:
             if provider == "ollama":
                 return await _ollama_json(system, prompt, settings), provider
+            if provider == "groq":
+                return await _groq_json(system, prompt, settings), provider
             return await _anthropic_json(system, prompt, settings), provider
         except AIProviderError:
             log_warning(f"AI provider '{provider}' failed, trying next")

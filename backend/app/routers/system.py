@@ -35,6 +35,8 @@ async def health() -> dict:
 
     if settings.ai_provider == "anthropic":
         checks["ai"] = "configured" if settings.anthropic_api_key else "missing_key"
+    elif settings.ai_provider == "groq":
+        checks["ai"] = "configured" if settings.groq_api_key else "missing_key"
     elif settings.ai_provider == "ollama":
         checks["ai"] = "configured"
     else:
