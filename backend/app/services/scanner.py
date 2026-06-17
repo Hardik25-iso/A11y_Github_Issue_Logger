@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 
 from backend.app.core.config import get_settings
-from backend.app.core.logging import log_error, log_warning
+from backend.app.core.logging import log_error
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import ScanIssue, ScanResponse
 
@@ -115,7 +115,7 @@ def normalize_violations(violations: list[dict]) -> list[ScanIssue]:
             ScanIssue(
                 id=violation.get("id", "axe-violation"),
                 title=violation.get("help", "Accessibility violation"),
-                severity=SEVERITY_MAP.get(violation.get("impact"), "Low"),
+                severity=SEVERITY_MAP.get(violation.get("impact"), "Low"),  # type: ignore[arg-type]
                 wcag_criterion=criterion,
                 wcag_url=_wcag_url(criterion, violation.get("helpUrl", "")),
                 element=nodes[0].get("html", "")[:300] if nodes else "",

@@ -64,7 +64,11 @@ async def _anthropic_json(system: str, prompt: str, settings: Settings) -> dict[
             system=system,
             messages=[{"role": "user", "content": prompt}],
         )
-        return _extract_json(response.content[0].text)
+        from anthropic.types import TextBlock
+        block = response.content[0]
+        if not isinstance(block, TextBlock):
+            raise AIProviderError("Anthropic returned a non-text content block")
+        return _extract_json(block.text)
     except Exception as exc:
         log_error(f"Anthropic request failed: {type(exc).__name__}: {exc}", exc=exc)
         raise AIProviderError("Anthropic request failed") from exc

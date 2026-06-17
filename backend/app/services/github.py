@@ -164,7 +164,7 @@ async def search_issues(issue: ScanIssue, repo: str) -> tuple[list[SimilarIssue]
     if not repo:
         return fallback_results(issue), "Demo matches shown because no target repository is configured.", "fallback"
 
-    params = {"q": build_search_query(issue, repo), "per_page": MAX_SEARCH_RESULTS}
+    params: dict[str, str | int] = {"q": build_search_query(issue, repo), "per_page": MAX_SEARCH_RESULTS}
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.get(f"{GITHUB_API}/search/issues", params=params, headers=_headers())

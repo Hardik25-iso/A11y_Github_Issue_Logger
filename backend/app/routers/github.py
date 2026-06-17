@@ -1,3 +1,5 @@
+from typing import Literal, cast
+
 from fastapi import APIRouter
 
 from backend.app.core.config import get_settings
@@ -11,7 +13,11 @@ router = APIRouter(prefix="/api", tags=["github"])
 async def search(request: SearchRequest) -> SearchResponse:
     repo = request.repo or get_settings().default_repo
     issues, summary, source = await search_issues(request.issue, repo)
-    return SearchResponse(similar_issues=issues, ai_summary=summary, source=source)
+    return SearchResponse(
+        similar_issues=issues,
+        ai_summary=summary,
+        source=cast(Literal["github", "fallback"], source),
+    )
 
 
 @router.post("/log-issue", response_model=LogResponse)
