@@ -1,13 +1,18 @@
+import logging
+
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.core.logging import _safe
 from backend.app.services.scanner import _SCAN_SEMAPHORE
 
 client = TestClient(app)
 
 
 def test_health():
-    assert client.get("/health").json() == {"status": "ok"}
+    data = client.get("/health").json()
+    assert data["status"] in ("ready", "degraded")
+    assert "checks" in data
 
 
 def test_scan_fallback_returns_structured_issues(monkeypatch):
@@ -98,6 +103,28 @@ def test_cors_rejects_unknown_origin():
 def test_scan_semaphore_has_concurrency_cap():
     # Semaphore value reflects the configured cap (default 3)
     assert _SCAN_SEMAPHORE._value == 3
+
+
+def test_log_redacts_secrets():
+    assert _safe("Bearer sk-ant-api03-secret") == "Bearer [REDACTED]"
+    assert _safe("token ghp_abc123") == "token [REDACTED]"
+    assert _safe("normal log message") == "normal log message"
+
+
+def test_health_returns_readiness_structure():
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert "status" in data
+    assert "checks" in data
+    assert data["status"] in ("ready", "degraded")
+    assert "axe_bundle" in data["checks"]
+    assert "ai" in data["checks"]
+    assert "github" in data["checks"]
+
+
+def test_livez_is_trivial():
+    assert client.get("/livez").json() == {"status": "ok"}
 
 
 def test_config_reports_ollama_without_exposing_internal_url(monkeypatch):

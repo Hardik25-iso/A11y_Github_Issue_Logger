@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from backend.app.core.config import get_settings
+from backend.app.core.logging import RequestIDMiddleware
 from backend.app.routers import generation, github, scan, system
 
 load_dotenv()
@@ -24,6 +25,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestIDMiddleware)
 app.include_router(system.router)
 app.include_router(scan.router)
 app.include_router(github.router)

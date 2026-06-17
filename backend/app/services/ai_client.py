@@ -4,6 +4,7 @@ from typing import Any, Literal
 import httpx
 
 from backend.app.core.config import Settings, get_settings
+from backend.app.core.logging import log_error, log_warning
 
 AIProvider = Literal["ollama", "anthropic"]
 
@@ -46,6 +47,7 @@ async def _ollama_json(system: str, prompt: str, settings: Settings) -> dict[str
             response.raise_for_status()
         return _extract_json(response.json()["message"]["content"])
     except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+        log_warning(f"Ollama request failed: {type(exc).__name__}: {exc}")
         raise AIProviderError("Ollama request failed") from exc
 
 
@@ -64,6 +66,7 @@ async def _anthropic_json(system: str, prompt: str, settings: Settings) -> dict[
         )
         return _extract_json(response.content[0].text)
     except Exception as exc:
+        log_error(f"Anthropic request failed: {type(exc).__name__}: {exc}", exc=exc)
         raise AIProviderError("Anthropic request failed") from exc
 
 
@@ -88,5 +91,7 @@ async def generate_json(system: str, prompt: str) -> tuple[dict[str, Any], AIPro
                 return await _ollama_json(system, prompt, settings), provider
             return await _anthropic_json(system, prompt, settings), provider
         except AIProviderError:
+            log_warning(f"AI provider '{provider}' failed, trying next")
             continue
+    log_error("All configured AI providers exhausted without a valid response")
     raise AIProviderError("No configured AI provider returned a valid response")

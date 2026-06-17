@@ -2,11 +2,12 @@ import asyncio
 from pathlib import Path
 
 from backend.app.core.config import get_settings
+from backend.app.core.logging import log_error, log_warning
+from backend.app.core.security import validate_resolved_public_url
+from backend.app.models import ScanIssue, ScanResponse
 
 # Max concurrent live Playwright scans — prevents resource exhaustion
 _SCAN_SEMAPHORE = asyncio.Semaphore(3)
-from backend.app.core.security import validate_resolved_public_url
-from backend.app.models import ScanIssue, ScanResponse
 
 SEVERITY_MAP = {
     "critical": "Critical",
@@ -174,4 +175,5 @@ async def scan_url(url: str) -> ScanResponse:
         issues = normalize_violations(result.get("violations", []))
         return ScanResponse(url=url, issues=issues, summary=_summary(issues), source="live")
     except Exception as exc:
+        log_error(f"Live scan failed for url={url}: {type(exc).__name__}: {exc}", exc=exc)
         return fallback_scan(url, f"Live scan failed; demo results shown. {type(exc).__name__}")
