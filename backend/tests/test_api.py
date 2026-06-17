@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.services.scanner import _SCAN_SEMAPHORE
 
 client = TestClient(app)
 
@@ -68,6 +69,35 @@ def test_config_does_not_expose_secrets(monkeypatch):
     assert body["ai_configured"] is True
     assert "secret-token" not in response.text
     assert "secret-key" not in response.text
+
+
+def test_cors_allows_configured_origin():
+    # Default FRONTEND_ORIGINS in test env is http://localhost:5173
+    response = client.options(
+        "/api/scan",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+
+def test_cors_rejects_unknown_origin():
+    response = client.options(
+        "/api/scan",
+        headers={
+            "Origin": "https://malicious-site.com",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_scan_semaphore_has_concurrency_cap():
+    # Semaphore value reflects the configured cap (default 3)
+    assert _SCAN_SEMAPHORE._value == 3
 
 
 def test_config_reports_ollama_without_exposing_internal_url(monkeypatch):

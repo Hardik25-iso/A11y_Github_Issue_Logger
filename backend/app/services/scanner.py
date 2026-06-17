@@ -1,6 +1,10 @@
+import asyncio
 from pathlib import Path
 
 from backend.app.core.config import get_settings
+
+# Max concurrent live Playwright scans — prevents resource exhaustion
+_SCAN_SEMAPHORE = asyncio.Semaphore(3)
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import ScanIssue, ScanResponse
 
@@ -154,17 +158,18 @@ async def scan_url(url: str) -> ScanResponse:
         if not axe_path.exists():
             return fallback_scan(url, "Local axe-core bundle is missing; demo results shown.")
 
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch()
-            try:
-                page = await browser.new_page()
-                await page.route("**/*", _guarded_route)
-                await page.goto(url, wait_until="domcontentloaded", timeout=settings.scan_timeout_ms)
-                validate_resolved_public_url(page.url)
-                await page.add_script_tag(path=str(axe_path))
-                result = await page.evaluate("async () => await axe.run(document)")
-            finally:
-                await browser.close()
+        async with _SCAN_SEMAPHORE:
+            async with async_playwright() as playwright:
+                browser = await playwright.chromium.launch()
+                try:
+                    page = await browser.new_page()
+                    await page.route("**/*", _guarded_route)
+                    await page.goto(url, wait_until="domcontentloaded", timeout=settings.scan_timeout_ms)
+                    validate_resolved_public_url(page.url)
+                    await page.add_script_tag(path=str(axe_path))
+                    result = await page.evaluate("async () => await axe.run(document)")
+                finally:
+                    await browser.close()
 
         issues = normalize_violations(result.get("violations", []))
         return ScanResponse(url=url, issues=issues, summary=_summary(issues), source="live")
