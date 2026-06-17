@@ -2,15 +2,25 @@ services:
   - type: web
     name: a11y-issue-logger-api
     runtime: python
-    buildCommand: pip install -r backend/requirements.txt
+    # Install deps then attempt playwright browser install; || true keeps build green
+    # when Render's sandbox blocks the browser download (ENABLE_LIVE_SCAN=false anyway)
+    buildCommand: >
+      pip install -r backend/requirements.txt &&
+      python -m playwright install chromium 2>/dev/null || true
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: AI_PROVIDER
-        value: template
+        value: anthropic
       - key: ENABLE_LIVE_SCAN
         value: "false"
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: GITHUB_TOKEN
         sync: false
-      - key: ALLOWED_ORIGINS
+      - key: GITHUB_REPO_OWNER
         sync: false
+      - key: GITHUB_REPO_NAME
+        sync: false
+      - key: FRONTEND_ORIGINS
+        value: "https://a11y-github-issue-logger.vercel.app"
