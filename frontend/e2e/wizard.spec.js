@@ -51,7 +51,7 @@ const SEARCH_RESPONSE = {
       similarity_explanation: "Matches the same WCAG criterion and element type.",
     },
   ],
-  ai_summary: "Found 1 related issue in example/repo, ranked by keyword similarity.",
+  ai_summary: "Found 1 related issue in example/repo, ranked by AI relevance.",
   source: "github",
 };
 
@@ -123,33 +123,31 @@ test.beforeEach(async ({ page }) => {
 // ── Step 1: Scan ─────────────────────────────────────────────────────────────
 
 test("shows hero and scan form on step 1", async ({ page }) => {
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Turn accessibility findings into actionable GitHub issues",
-  );
-  await expect(page.getByLabel("Public page URL")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Scan page" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Scan. Identify.");
+  await expect(page.getByLabel("Page URL to audit")).toBeVisible();
+  await expect(page.getByRole("button", { name: /run accessibility scan/i })).toBeVisible();
 });
 
 test("displays scan results after form submission", async ({ page }) => {
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await expect(page.getByText("Demo results shown")).toBeVisible();
   await expect(page.getByText("Images must have alternative text")).toBeVisible();
   await expect(page.getByText("Buttons must have discernible text")).toBeVisible();
 });
 
 test("severity filter hides non-matching issues", async ({ page }) => {
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
-  await page.getByLabel(/filter by severity/i).selectOption("High");
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
+  await page.locator("#severity-filter").selectOption("High");
   await expect(page.getByText("Buttons must have discernible text")).toBeVisible();
   await expect(page.getByText("Images must have alternative text")).not.toBeVisible();
 });
 
 test("continue button is disabled until an issue is selected", async ({ page }) => {
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
-  const continueBtn = page.getByRole("button", { name: /find similar issues/i });
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
+  const continueBtn = page.getByRole("button", { name: /find similar github issues/i });
   await expect(continueBtn).toBeDisabled();
   await page.getByRole("button", { name: /images must have alternative text/i }).click();
   await expect(continueBtn).toBeEnabled();
@@ -158,45 +156,45 @@ test("continue button is disabled until an issue is selected", async ({ page }) 
 // ── Step 2: Compare ───────────────────────────────────────────────────────────
 
 test("navigates to compare step and shows similar issues", async ({ page }) => {
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await page.getByRole("button", { name: /images must have alternative text/i }).click();
-  await page.getByRole("button", { name: /find similar issues/i }).click();
-  await expect(page.getByRole("heading", { name: /review similar github issues/i })).toBeVisible();
+  await page.getByRole("button", { name: /find similar github issues/i }).click();
+  await expect(page.getByRole("heading", { name: /similar github issues/i })).toBeVisible();
   await expect(page.getByText("Images are missing alt text on product pages")).toBeVisible();
 });
 
 test("can select a reference issue and proceed", async ({ page }) => {
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await page.getByRole("button", { name: /images must have alternative text/i }).click();
-  await page.getByRole("button", { name: /find similar issues/i }).click();
-  const generateBtn = page.getByRole("button", { name: /generate issue/i });
+  await page.getByRole("button", { name: /find similar github issues/i }).click();
+  const generateBtn = page.getByRole("button", { name: /generate github issue/i });
   await expect(generateBtn).toBeDisabled();
   await page.getByRole("button", { name: /images are missing alt text/i }).click();
   await expect(generateBtn).toBeEnabled();
 });
 
 test("can select create from scratch and proceed", async ({ page }) => {
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await page.getByRole("button", { name: /images must have alternative text/i }).click();
-  await page.getByRole("button", { name: /find similar issues/i }).click();
+  await page.getByRole("button", { name: /find similar github issues/i }).click();
   await page.getByRole("button", { name: /create from scratch/i }).click();
-  await expect(page.getByRole("button", { name: /generate issue/i })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /generate github issue/i })).toBeEnabled();
 });
 
 // ── Step 3: Generate ──────────────────────────────────────────────────────────
 
 test("shows generated issue draft", async ({ page }) => {
   // scan
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await page.getByRole("button", { name: /images must have alternative text/i }).click();
-  await page.getByRole("button", { name: /find similar issues/i }).click();
+  await page.getByRole("button", { name: /find similar github issues/i }).click();
   // compare
   await page.getByRole("button", { name: /create from scratch/i }).click();
-  await page.getByRole("button", { name: /generate issue/i }).click();
+  await page.getByRole("button", { name: /generate github issue/i }).click();
   // generate
   await expect(page.getByRole("textbox", { name: /title/i })).toHaveValue("[A11y][WCAG 1.1.1] Images must have alternative text");
   await expect(page.getByText("Template fallback — AI unavailable")).toBeVisible();
@@ -206,13 +204,13 @@ test("shows generated issue draft", async ({ page }) => {
 
 test("full wizard: scan → compare → generate → log → success", async ({ page }) => {
   // step 1
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await page.getByRole("button", { name: /images must have alternative text/i }).click();
-  await page.getByRole("button", { name: /find similar issues/i }).click();
+  await page.getByRole("button", { name: /find similar github issues/i }).click();
   // step 2
   await page.getByRole("button", { name: /create from scratch/i }).click();
-  await page.getByRole("button", { name: /generate issue/i }).click();
+  await page.getByRole("button", { name: /generate github issue/i }).click();
   // step 3
   await page.getByRole("button", { name: /review and log/i }).click();
   // step 4
@@ -230,14 +228,12 @@ test("full wizard: scan → compare → generate → log → success", async ({ 
 // ── Back navigation ───────────────────────────────────────────────────────────
 
 test("back button from compare returns to scan with selection preserved", async ({ page }) => {
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await page.getByRole("button", { name: /images must have alternative text/i }).click();
-  await page.getByRole("button", { name: /find similar issues/i }).click();
+  await page.getByRole("button", { name: /find similar github issues/i }).click();
   await page.getByRole("button", { name: /← back/i }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Turn accessibility findings into actionable GitHub issues",
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Scan. Identify.");
 });
 
 // ── Error handling ────────────────────────────────────────────────────────────
@@ -247,7 +243,7 @@ test("shows error alert when scan fails", async ({ page }) => {
   await page.route("**/api/scan", (route) =>
     route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ detail: "URL is not a public address." }) }),
   );
-  await page.getByLabel("Public page URL").fill("https://example.com");
-  await page.getByRole("button", { name: "Scan page" }).click();
+  await page.getByLabel("Page URL to audit").fill("https://example.com");
+  await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await expect(page.getByRole("alert")).toContainText("URL is not a public address.");
 });
