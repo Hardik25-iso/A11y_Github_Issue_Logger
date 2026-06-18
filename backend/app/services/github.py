@@ -2,6 +2,7 @@ import httpx
 from fastapi import HTTPException
 
 from backend.app.core.config import get_settings
+from backend.app.core.logging import log_warning
 from backend.app.models import GeneratedIssue, ScanIssue, SimilarIssue
 
 GITHUB_API = "https://api.github.com"
@@ -160,6 +161,32 @@ def fallback_results(issue: ScanIssue) -> list[SimilarIssue]:
     ]
 
 
+async def _ai_rank(issue: ScanIssue, results: list[SimilarIssue]) -> list[SimilarIssue]:
+    """Re-score results using AI; returns unchanged list if AI is unavailable."""
+    from backend.app.prompts.similarity_ranking import SYSTEM_PROMPT, similarity_ranking_prompt
+    from backend.app.services.ai_client import AIProviderError, generate_json
+
+    candidates = [{"number": r.number, "title": r.title, "body": r.body} for r in results]
+    try:
+        data, _ = await generate_json(SYSTEM_PROMPT, similarity_ranking_prompt(issue, candidates))
+        score_map = {
+            int(item["number"]): item
+            for item in data.get("ranked", [])
+            if isinstance(item, dict) and "number" in item and "score" in item
+        }
+        rescored = [
+            r.model_copy(update={
+                "similarity_score": min(10.0, max(1.0, float(score_map[r.number]["score"]))),
+                "similarity_explanation": str(score_map[r.number].get("explanation", r.similarity_explanation)),
+            }) if r.number in score_map else r
+            for r in results
+        ]
+        return sorted(rescored, key=lambda x: x.similarity_score, reverse=True)
+    except (AIProviderError, Exception) as exc:
+        log_warning(f"AI similarity ranking skipped: {type(exc).__name__}: {exc}")
+        return results
+
+
 async def search_issues(issue: ScanIssue, repo: str) -> tuple[list[SimilarIssue], str, str]:
     if not repo:
         return fallback_results(issue), "Demo matches shown because no target repository is configured.", "fallback"
@@ -172,10 +199,10 @@ async def search_issues(issue: ScanIssue, repo: str) -> tuple[list[SimilarIssue]
             return fallback_results(issue), f"{_response_message(response)} Demo matches are shown.", "fallback"
         normalized = [_normalize_issue(item, issue) for item in response.json().get("items", [])[:MAX_SEARCH_RESULTS]]
         results = [r for r in normalized if r is not None]
-        results.sort(key=lambda item: item.similarity_score, reverse=True)
         if not results:
             return [], f"No similar issues were found in {repo}.", "github"
-        return results, f"Found {len(results)} related issues in {repo}, ranked by keyword similarity.", "github"
+        results = await _ai_rank(issue, results)
+        return results, f"Found {len(results)} related issues in {repo}, ranked by AI relevance.", "github"
     except httpx.HTTPError:
         return fallback_results(issue), "GitHub search was unavailable; demo matches are shown.", "fallback"
 

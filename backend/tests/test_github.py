@@ -96,7 +96,7 @@ def test_search_issues_normalizes_and_scores_results(monkeypatch):
     )
     results, summary, source = asyncio.run(github.search_issues(scan_issue(), "owner/repo"))
     assert source == "github"
-    assert "ranked by keyword similarity" in summary
+    assert "ranked by" in summary
     assert results[0].number == 7
     assert results[0].similarity_score > 5
     assert "WCAG" in results[0].similarity_explanation

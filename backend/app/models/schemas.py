@@ -116,7 +116,7 @@ class GenerateRequest(BaseModel):
 
 class GenerateResponse(BaseModel):
     generated_issue: GeneratedIssue
-    source: Literal["ollama", "anthropic", "template"]
+    source: Literal["ollama", "anthropic", "groq", "template"]
 
 
 class LogRequest(BaseModel):

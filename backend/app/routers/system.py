@@ -57,6 +57,8 @@ async def config() -> dict[str, str | bool]:
         "ai_provider": settings.ai_provider,
         "ai_configured": settings.ai_provider in {"ollama", "auto"} or (
             settings.ai_provider == "anthropic" and bool(settings.anthropic_api_key)
+        ) or (
+            settings.ai_provider == "groq" and bool(settings.groq_api_key)
         ),
         "live_scan_enabled": settings.enable_live_scan,
     }

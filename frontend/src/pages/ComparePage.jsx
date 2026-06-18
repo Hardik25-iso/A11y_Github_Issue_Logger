@@ -10,7 +10,8 @@ export default function ComparePage({ state, setState, back, next }) {
   useEffect(() => {
     if (state.similar) return;
     doSearch(repo);
-  }, []); // one-shot: fires on mount to auto-search the selected issue
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentional one-shot: auto-searches on mount only if not already fetched
 
   function doSearch(targetRepo) {
     setBusy(true);
@@ -32,8 +33,8 @@ export default function ComparePage({ state, setState, back, next }) {
     <section>
       <div className="section-head">
         <div>
-          <p className="eyebrow">Duplicate prevention</p>
-          <h1>Review similar GitHub issues</h1>
+          <p className="eyebrow">Duplicate Prevention · GitHub Search</p>
+          <h1>Similar GitHub Issues</h1>
         </div>
       </div>
 
@@ -58,7 +59,7 @@ export default function ComparePage({ state, setState, back, next }) {
 
       <div className="compare">
         <div className="panel sticky">
-          <p className="panel-eyebrow">Current finding</p>
+          <p className="panel-eyebrow">Current A11y Issue</p>
           <Badge tone={state.selected.severity}>{state.selected.severity}</Badge>
           <h2 style={{ marginTop: 12, fontSize: "1.1rem" }}>{state.selected.title}</h2>
           <p style={{ marginTop: 8, fontSize: ".9rem", color: "var(--text-secondary)", lineHeight: 1.55 }}>
@@ -75,7 +76,7 @@ export default function ComparePage({ state, setState, back, next }) {
         </div>
 
         <div className="panel">
-          <p className="panel-eyebrow">Potential references in {repo || "repository"}</p>
+          <p className="panel-eyebrow">Matching GitHub Issues in {repo || "repository"}</p>
 
           {busy && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0", color: "var(--text-muted)" }}>
@@ -136,7 +137,7 @@ export default function ComparePage({ state, setState, back, next }) {
           disabled={!state.reference}
           onClick={next}
         >
-          Generate issue →
+          Generate GitHub Issue →
         </button>
       </div>
     </section>

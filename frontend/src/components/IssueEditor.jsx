@@ -3,6 +3,7 @@ import Badge from "./Badge";
 const SOURCE_LABELS = {
   ollama: "Generated with Ollama",
   anthropic: "Generated with Anthropic",
+  groq: "Generated with Groq AI",
   template: "Template fallback — AI unavailable",
 };
 
@@ -21,10 +22,10 @@ export default function IssueEditor({ issue, onChange, readOnly = false, source 
   return (
     <div className="editor">
       <div className="ai-banner">
-        <Badge>{SOURCE_LABELS[source] || "Generated draft"}</Badge>
-        <span>
-          {issue.severity} severity finding
-          {source === "template" ? " — review all fields before logging" : ""}
+        <Badge>{SOURCE_LABELS[source] || "AI Generated"}</Badge>
+        <span style={{ color: "var(--text-muted)", fontSize: ".82rem" }}>
+          GitHub — New Issue &nbsp;·&nbsp; {issue.severity} severity
+          {source === "template" ? " — template fallback, review all fields" : ""}
         </span>
       </div>
 

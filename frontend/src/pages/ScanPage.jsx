@@ -4,8 +4,15 @@ import { postJson } from "../services/api";
 
 const SEVERITIES = ["Critical", "High", "Medium", "Low"];
 
+const EXAMPLE_URLS = [
+  { label: "bbc.co.uk",       url: "https://www.bbc.co.uk" },
+  { label: "w3.org",          url: "https://www.w3.org" },
+  { label: "wikipedia.org",   url: "https://en.wikipedia.org" },
+  { label: "example.com",     url: "https://example.com" },
+];
+
 export default function ScanPage({ state, setState, next }) {
-  const [url, setUrl] = useState(state.url || "https://example.com");
+  const [url, setUrl] = useState(state.url || "");
   const [filter, setFilter] = useState("All");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -32,23 +39,27 @@ export default function ScanPage({ state, setState, next }) {
   return (
     <section>
       <div className="hero">
-        <p className="eyebrow">Accessibility intelligence for engineering teams</p>
-        <h1>Turn accessibility findings into actionable GitHub issues.</h1>
+        <p className="eyebrow">Accessibility · GitHub Integration</p>
+        <h1>
+          Scan. Identify.
+          <span className="hero-accent">Log with AI.</span>
+        </h1>
         <p className="hero-sub">
-          Scan a public page, find related work in your repository, and generate a complete,
-          reviewable issue — all in one focused workflow.
+          Enter a URL to run an automated WCAG accessibility audit. The tool identifies
+          violations, searches your GitHub repository for similar open issues, then drafts
+          a complete, production-ready GitHub issue with AI.
         </p>
       </div>
 
       <form className="scan-card" onSubmit={scan}>
-        <label htmlFor="url-input">Public page URL</label>
+        <label htmlFor="url-input">Page URL to audit</label>
         <div className="input-row">
           <input
             id="url-input"
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com"
+            placeholder="https://example.com/page-to-audit"
             required
             aria-describedby={error ? "scan-error" : undefined}
           />
@@ -58,8 +69,23 @@ export default function ScanPage({ state, setState, next }) {
                 <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} aria-hidden="true" />
                 Scanning…
               </>
-            ) : "Scan page"}
+            ) : (
+              <>⚡ Run Accessibility Scan</>
+            )}
           </button>
+        </div>
+        <div className="url-chips" aria-label="Example URLs to try">
+          <span className="url-chips-label">Try:</span>
+          {EXAMPLE_URLS.map(({ label, url: chipUrl }) => (
+            <button
+              key={chipUrl}
+              type="button"
+              className="chip"
+              onClick={() => setUrl(chipUrl)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </form>
 
@@ -73,22 +99,30 @@ export default function ScanPage({ state, setState, next }) {
             <div className="alert" role="status">{state.scan.notice}</div>
           )}
 
+          <div className="results-header">
+            <div>
+              <h2>Accessibility Audit Results</h2>
+              <p className="result-url">{state.scan.url}</p>
+            </div>
+            <span className="ai-powered-pill" aria-label="AI powered scan">AI POWERED</span>
+          </div>
+
           <div className="summary" aria-label="Issue summary by severity">
             {SEVERITIES.map((s) => (
               <div className={`summary-pill ${s.toLowerCase()}`} key={s}>
-                <span className="summary-label">{s}</span>
                 <span className="summary-count">{state.scan.summary[s]}</span>
+                <span className="summary-label">{s}</span>
               </div>
             ))}
           </div>
 
           <div className="section-head">
             <div>
-              <p className="eyebrow">Scan results</p>
-              <h2>Select one issue to investigate</h2>
+              <p className="eyebrow">Detected Issues ({issues.length})</p>
+              <h2>Select one issue to find similar GitHub issues</h2>
             </div>
             <label htmlFor="severity-filter">
-              <span className="muted" style={{ fontSize: ".8rem", fontWeight: 600 }}>Filter by severity</span>
+              <span className="muted" style={{ fontSize: ".72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em" }}>Filter</span>
               <select
                 id="severity-filter"
                 value={filter}
@@ -134,11 +168,11 @@ export default function ScanPage({ state, setState, next }) {
               onClick={next}
               aria-describedby={!state.selected ? "select-hint" : undefined}
             >
-              Find similar issues →
+              Find Similar GitHub Issues →
             </button>
           </div>
           {!state.selected && (
-            <p id="select-hint" className="muted" style={{ textAlign: "right", fontSize: ".82rem", marginTop: -16 }}>
+            <p id="select-hint" className="muted" style={{ textAlign: "right", fontSize: ".78rem", marginTop: -16 }}>
               Select an issue above to continue
             </p>
           )}

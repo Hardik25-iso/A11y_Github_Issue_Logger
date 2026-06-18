@@ -28,22 +28,25 @@ export default function GeneratePage({ state, setState, back, next }) {
   useEffect(() => {
     if (state.generated) return;
     generate();
-  }, []); // one-shot: fires on mount only if not already generated
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentional one-shot: auto-generates on mount only if not already done
 
   if (busy) {
     return (
-      <section className="center" aria-live="polite">
-        <div className="spinner" aria-hidden="true" />
-        <h1>Generating an actionable issue...</h1>
-        <p>Combining scan evidence and reference context.</p>
+      <section aria-live="polite">
+        <div className="loading-screen">
+          <div className="spinner" aria-hidden="true" />
+          <h1>Generating issue draft…</h1>
+          <p>AI is combining scan evidence and reference context to produce a structured report.</p>
+        </div>
       </section>
     );
   }
 
   return (
     <section>
-      <p className="eyebrow">Generated draft</p>
-      <h1>Review the proposed GitHub issue</h1>
+      <p className="eyebrow">AI Generated · Review Draft</p>
+      <h1>Review the Generated GitHub Issue</h1>
       {error && (
         <div role="alert" className="alert error generate-error">
           <p>{error}</p>

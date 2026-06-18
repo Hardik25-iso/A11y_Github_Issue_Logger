@@ -20,6 +20,7 @@ export default function App() {
 
   return (
     <div className="page-wrapper">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <header>
         <a
           className="brand"
@@ -30,7 +31,7 @@ export default function App() {
           <span className="brand-mark">A11Y</span>
           Issue Logger
         </a>
-        <span className="header-meta">GitHub workflow assistant</span>
+        <span className="header-meta">WCAG · Accessibility · GitHub</span>
       </header>
 
       <main id="main-content">
