@@ -1,117 +1,119 @@
 # A11y GitHub Issue Logger
 
-A full-stack workflow tool that converts automated website accessibility findings into actionable, reviewable GitHub issues. Scan a public URL with axe-core, find related existing issues, generate a complete GitHub issue with AI, review it, and log it — all in one guided four-step workflow.
+Turn WCAG accessibility findings into structured, reviewable GitHub issues — in four steps.
+
+Scan any public URL with axe-core, find existing issues in your GitHub repo to avoid duplicates, generate a complete issue draft, review it, and log it. No accessibility finding gets lost in a Slack thread or a spreadsheet again.
+
+---
 
 ## How it works
 
 ```
-Scan public URL (axe-core via Playwright)
-  → Filter and select one accessibility violation
-  → Search GitHub repository for similar issues
-  → Generate a structured issue draft (Ollama / Anthropic / template)
-  → Review and edit all fields
-  → Log the approved issue to GitHub
+1. Scan   →  Enter a URL. axe-core audits the page and lists WCAG violations.
+2. Search →  Pick one violation. The tool searches your GitHub repo for duplicates.
+3. Draft  →  AI writes a structured issue: title, steps to reproduce, expected/actual, acceptance criteria.
+4. Log    →  You review every field, edit anything, then log directly to GitHub.
 ```
 
-AI assists but never acts autonomously. Human review is mandatory before any GitHub issue is created.
+Human review is mandatory. The tool drafts; you decide.
 
-## Tech stack
+---
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, Vite, custom CSS design system |
-| Backend | Python 3.12, FastAPI, Pydantic v2 |
-| Scanning | Playwright (Chromium), axe-core (bundled) |
-| AI | Ollama (local), Anthropic Claude, deterministic template fallback |
-| GitHub | GitHub REST API v2022-11-28 |
-| CI | GitHub Actions |
-
-## Local development
+## Quick start
 
 ### Prerequisites
 
 - Python 3.12+
 - Node.js 20+
-- Ollama (optional — for local AI generation)
 
-### Setup
+### 1. Clone and configure
 
 ```bash
-# Clone and configure
-cp .env.example .env        # edit with your tokens
+git clone https://github.com/your-username/a11y-github-issue-logger.git
+cd a11y-github-issue-logger
+cp .env.example .env
+```
 
-# Backend
+Open `.env` and fill in your GitHub token and repo name (see [Configuration](#configuration) below).
+
+### 2. Start the backend
+
+```bash
 pip install -r backend/requirements.txt
 python -m playwright install chromium
 uvicorn backend.app.main:app --reload --port 8000
+```
 
-# Frontend (separate terminal)
+### 3. Start the frontend
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. Interactive API docs: `http://localhost:8000/docs`.
+Open `http://localhost:5173`.
 
-### Local AI (free, no API key)
+---
 
-```bash
-ollama pull qwen3:8b
-ollama serve
-# set AI_PROVIDER=ollama in .env
-```
+## Configuration
 
-## Environment variables
+Create a `.env` file in the repo root (copy from `.env.example`).
 
 | Variable | Required | Description |
 |---|---|---|
-| `AI_PROVIDER` | No | `ollama` · `anthropic` · `auto` · `template` (default) |
-| `OLLAMA_BASE_URL` | No | Ollama server URL (default: `http://localhost:11434`) |
-| `OLLAMA_MODEL` | No | Model name (default: `qwen3:8b`) |
-| `AI_TIMEOUT_SECONDS` | No | Request timeout in seconds (default: `30`) |
+| `GITHUB_TOKEN` | Yes | Fine-grained PAT with **Issues: read/write** on your repo |
+| `GITHUB_REPO_OWNER` | Yes | Your GitHub username or org |
+| `GITHUB_REPO_NAME` | Yes | The repo where issues will be logged |
+| `AI_PROVIDER` | No | `groq` · `anthropic` · `ollama` · `template` (default: `template`) |
+| `GROQ_API_KEY` | Groq only | Free API key from [console.groq.com](https://console.groq.com) |
 | `ANTHROPIC_API_KEY` | Anthropic only | Anthropic API key |
-| `ANTHROPIC_MODEL` | No | Model ID (default: `claude-sonnet-4-20250514`) |
-| `GITHUB_TOKEN` | Issue logging | Fine-grained PAT with Issues read/write |
-| `GITHUB_REPO_OWNER` | No | Default repository owner |
-| `GITHUB_REPO_NAME` | No | Default repository name |
-| `FRONTEND_ORIGINS` | Production | Comma-separated CORS origins for your frontend |
-| `ENABLE_LIVE_SCAN` | No | `true` to enable Playwright scanning (default: `false`) |
-| `SCAN_TIMEOUT_MS` | No | Browser navigation timeout (default: `30000`) |
-| `BLOCK_HEAVY_SCAN_RESOURCES` | No | Block images/fonts during scans (default: `true`) |
+| `OLLAMA_BASE_URL` | Ollama only | Default: `http://localhost:11434` |
+| `OLLAMA_MODEL` | Ollama only | Default: `qwen3:8b` |
+| `ENABLE_LIVE_SCAN` | No | `true` to enable real Playwright scanning (default: `false`) |
+| `FRONTEND_ORIGINS` | Production | Your frontend URL for CORS (e.g. `https://your-app.vercel.app`) |
 
-**GitHub token permissions:** Repository → Issues (read and write). No other scopes needed.
+**GitHub token setup:** Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens. Select your repo, grant **Issues: read and write**. No other scopes needed.
 
-Never commit `.env` or any file containing secrets.
+### AI providers
+
+The tool works without any AI key — it falls back to a deterministic template that fills all required fields. To get smarter issue drafts:
+
+- **Groq** (recommended, free): Sign up at [console.groq.com](https://console.groq.com), create an API key, set `AI_PROVIDER=groq` and `GROQ_API_KEY=your_key`.
+- **Ollama** (local, free): Install [Ollama](https://ollama.com), run `ollama pull qwen3:8b`, set `AI_PROVIDER=ollama`.
+- **Anthropic**: Set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY=your_key`.
+
+---
 
 ## Deployment
 
 ### Frontend → Vercel
 
-1. Import the repository in Vercel
-2. Set root directory to `frontend/`
-3. Framework: Vite (auto-detected via `vercel.json`)
-4. Add environment variable: `VITE_API_URL=https://your-backend.railway.app`
-5. Deploy
+1. Import this repository in [Vercel](https://vercel.com)
+2. Set root directory: `frontend/`
+3. Add environment variable: `VITE_API_URL=https://your-backend-url`
+4. Deploy
 
 ### Backend → Railway
 
-1. Create a new project from this repository
-2. Set root directory to `backend/` (or use the `railway.toml` at repo root)
-3. Add all required environment variables in the Railway dashboard
-4. Set `FRONTEND_ORIGINS=https://your-frontend.vercel.app`
-5. Set `ENABLE_LIVE_SCAN=true` if the Railway plan supports Chromium
-6. Deploy
-
-**Note on live scanning:** Playwright Chromium requires a plan that allows installing system packages. Railway Hobby and Pro plans support this. If live scanning is not available, the app runs fully with fallback/demo scan results — all other features (GitHub search, AI generation, issue logging) work without Playwright.
+1. Create a new project from this repository in [Railway](https://railway.app)
+2. Add all variables from `.env.example` in the Railway dashboard
+3. Set `FRONTEND_ORIGINS=https://your-app.vercel.app`
+4. Set `ENABLE_LIVE_SCAN=true` (Railway supports Chromium on Hobby and Pro plans)
+5. Deploy
 
 ### Backend → Render
 
-Use the included `backend/render.yaml`. Add secrets in the Render dashboard (marked `sync: false`).
+Use the included `backend/render.yaml`. Add secrets in the Render dashboard.
+
+> **Live scanning note:** Playwright Chromium requires a host that allows installing system packages. If your plan doesn't support it, set `ENABLE_LIVE_SCAN=false` — all other features (GitHub search, AI generation, issue logging) work without it, and the app returns clearly-labeled demo results.
+
+---
 
 ## Running tests
 
 ```bash
-# Backend (from repo root)
+# Backend
 python -m pytest backend/tests -q
 
 # Frontend lint
@@ -120,56 +122,54 @@ cd frontend && npx eslint src/
 # Frontend build
 cd frontend && npm run build
 
-# Frontend dependency audit
-cd frontend && npm audit --audit-level=high
+# End-to-end (requires dev server running)
+cd frontend && npx playwright test
 ```
 
-CI runs all of the above on every push and pull request via GitHub Actions.
+---
 
-## API reference
+## API endpoints
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Health check |
-| `GET` | `/api/config` | Frontend configuration (no secrets exposed) |
+| `GET` | `/api/config` | Frontend config (no secrets exposed) |
 | `POST` | `/api/scan` | Scan a public URL with axe-core |
 | `POST` | `/api/search-issues` | Search GitHub for similar issues |
 | `POST` | `/api/generate-issue` | Generate a structured issue draft |
 | `POST` | `/api/log-issue` | Create the issue on GitHub |
 
+Interactive docs: `http://localhost:8000/docs`
+
+---
+
 ## Security
 
-- All user-supplied URLs are validated against SSRF using both parse-time and DNS-resolution checks
-- Playwright sub-resource requests are individually validated and can abort on private-IP redirects
-- GitHub and Anthropic credentials live only in backend environment variables — never sent to the frontend
-- The `/api/config` endpoint returns only boolean capability flags, never raw secrets
-- AI-generated `labels` and `assignee` fields are validated against GitHub's format rules before being sent to the API
+- User-supplied URLs are validated against SSRF using DNS resolution — private IPs, loopback, and cloud metadata endpoints are blocked.
+- GitHub and AI credentials live only in backend environment variables and are never sent to the frontend.
+- The `/api/config` endpoint returns only boolean capability flags, never raw secrets.
+- AI-generated content is validated with Pydantic before being trusted.
+
+---
 
 ## Project structure
 
 ```
-backend/
-  app/
-    core/         Settings, SSRF validation, security utilities
-    models/       Pydantic request/response schemas
-    routers/      FastAPI endpoint definitions
-    services/     Scanner, GitHub, AI generation logic
-    prompts/      Versioned AI prompt templates
-    assets/       Bundled axe-core (axe.min.js)
-  tests/          Backend unit and integration tests
-  requirements.txt
-  Procfile        Heroku/Railway process definition
-  railway.toml    Railway deployment config
-  render.yaml     Render deployment config
+backend/app/
+  core/       Settings, SSRF validation
+  models/     Pydantic request/response schemas
+  routers/    FastAPI endpoints
+  services/   Scanner, GitHub, AI generation
+  prompts/    AI prompt templates
 
-frontend/
-  src/
-    components/   Badge, IssueCard, IssueEditor, Steps
-    pages/        ScanPage, ComparePage, GeneratePage, ReviewPage
-    services/     Backend API client (api.js)
-  vercel.json     Vercel deployment config
-
-.github/
-  workflows/
-    ci.yml        GitHub Actions: test, lint, build, audit
+frontend/src/
+  pages/      ScanPage, ComparePage, GeneratePage, ReviewPage
+  components/ Badge, IssueCard, IssueEditor, Steps
+  services/   Backend API client
 ```
+
+---
+
+## License
+
+MIT
