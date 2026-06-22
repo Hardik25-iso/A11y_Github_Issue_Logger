@@ -9,19 +9,18 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
 
 from backend.app.core.config import get_settings
+from backend.app.core.limiter import limiter
 from backend.app.core.logging import RequestIDMiddleware
 from backend.app.routers import generation, github, scan, system
 from backend.app.services.scanner import close_browser_pool, init_browser_pool
 
 load_dotenv()
 settings = get_settings()
-
-limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 
 @asynccontextmanager
@@ -34,6 +33,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="A11y GitHub Issue Logger API", version="0.1.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+app.add_middleware(SlowAPIMiddleware)
 _origins = list(settings.frontend_origins)
 app.add_middleware(
     CORSMiddleware,

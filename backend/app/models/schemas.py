@@ -7,6 +7,7 @@ from backend.app.core.security import validate_public_url, validate_repository
 
 _GITHUB_USERNAME = re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$")
 _LABEL_PATTERN = re.compile(r"^[a-zA-Z0-9 _\-.:]+$")
+_GITHUB_TOKEN = re.compile(r"^(ghp_|ghs_|gho_|github_pat_)[A-Za-z0-9_]+$")
 
 Severity = Literal["Critical", "High", "Medium", "Low"]
 
@@ -46,11 +47,19 @@ class ScanResponse(BaseModel):
 class SearchRequest(BaseModel):
     issue: ScanIssue
     repo: str | None = None
+    github_token: str | None = None
 
     @field_validator("repo")
     @classmethod
     def validate_optional_repo(cls, value: str | None) -> str | None:
         return validate_repository(value) if value else value
+
+    @field_validator("github_token")
+    @classmethod
+    def validate_github_token(cls, value: str | None) -> str | None:
+        if value is not None and (not _GITHUB_TOKEN.match(value) or len(value) > 256):
+            raise ValueError("Invalid GitHub token format")
+        return value
 
 
 class SimilarIssue(BaseModel):
@@ -122,11 +131,19 @@ class GenerateResponse(BaseModel):
 class LogRequest(BaseModel):
     repo: str
     issue_data: GeneratedIssue
+    github_token: str | None = None
 
     @field_validator("repo")
     @classmethod
     def validate_repo(cls, value: str) -> str:
         return validate_repository(value)
+
+    @field_validator("github_token")
+    @classmethod
+    def validate_github_token(cls, value: str | None) -> str | None:
+        if value is not None and (not _GITHUB_TOKEN.match(value) or len(value) > 256):
+            raise ValueError("Invalid GitHub token format")
+        return value
 
 
 class LogResponse(BaseModel):
