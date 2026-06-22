@@ -44,7 +44,7 @@ async def health() -> dict:
 
     checks["github"] = "configured" if settings.github_token else "not_configured"
 
-    ready = all(v not in ("missing", "error") for v in checks.values() if not v.startswith("error"))
+    ready = all(v not in ("missing",) and not v.startswith("error") for v in checks.values())
     return {"status": "ready" if ready else "degraded", "checks": checks}
 
 

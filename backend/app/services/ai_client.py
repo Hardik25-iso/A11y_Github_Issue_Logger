@@ -106,6 +106,8 @@ async def _anthropic_json(system: str, prompt: str, settings: Settings) -> dict[
 def provider_order(settings: Settings) -> list[AIProvider]:
     if settings.ai_provider == "auto":
         providers: list[AIProvider] = ["ollama"]
+        if settings.groq_api_key:
+            providers.append("groq")
         if settings.anthropic_api_key:
             providers.append("anthropic")
         return providers

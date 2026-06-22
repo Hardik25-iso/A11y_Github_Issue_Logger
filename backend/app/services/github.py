@@ -182,7 +182,7 @@ async def _ai_rank(issue: ScanIssue, results: list[SimilarIssue]) -> list[Simila
             for r in results
         ]
         return sorted(rescored, key=lambda x: x.similarity_score, reverse=True)
-    except (AIProviderError, Exception) as exc:
+    except Exception as exc:
         log_warning(f"AI similarity ranking skipped: {type(exc).__name__}: {exc}")
         return results
 

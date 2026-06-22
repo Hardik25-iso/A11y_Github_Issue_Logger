@@ -1,13 +1,12 @@
 [build]
-builder = "nixpacks"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
 [environments.production.variables]
+ENABLE_LIVE_SCAN = "true"
 AI_PROVIDER = "template"
-ENABLE_LIVE_SCAN = "false"

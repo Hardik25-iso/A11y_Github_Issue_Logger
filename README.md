@@ -87,26 +87,27 @@ The tool works without any AI key — it falls back to a deterministic template 
 
 ## Deployment
 
+### Backend → Railway
+
+The backend uses Docker (Playwright Chromium is bundled in the image).
+
+1. Create a new project in [Railway](https://railway.app) and connect this repository
+2. Railway auto-detects the `Dockerfile` and `railway.toml` at the repo root
+3. Add secrets in the Railway dashboard (never commit these):
+   - `GITHUB_TOKEN`
+   - `GROQ_API_KEY` or `ANTHROPIC_API_KEY` (whichever provider you use)
+   - `FRONTEND_ORIGINS` — set to your Vercel URL once deployed
+4. Set `AI_PROVIDER` to your chosen provider (`groq`, `anthropic`, or `ollama`)
+5. Deploy — Railway runs the health check at `/health` before marking the service live
+
 ### Frontend → Vercel
 
 1. Import this repository in [Vercel](https://vercel.com)
 2. Set root directory: `frontend/`
-3. Add environment variable: `VITE_API_URL=https://your-backend-url`
+3. Add environment variable: `VITE_API_URL=https://your-railway-backend-url`
 4. Deploy
 
-### Backend → Railway
-
-1. Create a new project from this repository in [Railway](https://railway.app)
-2. Add all variables from `.env.example` in the Railway dashboard
-3. Set `FRONTEND_ORIGINS=https://your-app.vercel.app`
-4. Set `ENABLE_LIVE_SCAN=true` (Railway supports Chromium on Hobby and Pro plans)
-5. Deploy
-
-### Backend → Render
-
-Use the included `backend/render.yaml`. Add secrets in the Render dashboard.
-
-> **Live scanning note:** Playwright Chromium requires a host that allows installing system packages. If your plan doesn't support it, set `ENABLE_LIVE_SCAN=false` — all other features (GitHub search, AI generation, issue logging) work without it, and the app returns clearly-labeled demo results.
+> **Live scanning:** `ENABLE_LIVE_SCAN=true` is set automatically for the production environment in `railway.toml`. If you need to disable it, override it in the Railway dashboard.
 
 ---
 

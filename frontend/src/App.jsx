@@ -63,7 +63,7 @@ export default function App() {
 
       <footer>
         Built to turn WCAG findings into engineering action. &nbsp;·&nbsp;
-        <a href="https://www.w3.org/WAI/standards-guidelines/wcag/" target="_blank" rel="noreferrer" style={{ color: "var(--green-600)" }}>
+        <a href="https://www.w3.org/WAI/standards-guidelines/wcag/" target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
           WCAG guidelines
         </a>
       </footer>

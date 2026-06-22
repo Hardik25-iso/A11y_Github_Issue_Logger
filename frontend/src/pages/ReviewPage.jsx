@@ -84,7 +84,7 @@ export default function ReviewPage({ state, setState, back }) {
     return (
       <section>
         <div className="success-card">
-          <div className="success-icon" style={{ color: "var(--green-400)" }}>
+          <div className="success-icon" style={{ color: "var(--ok)" }}>
             <CheckCircleIcon />
           </div>
           <h2>Issue #{result.issue_number} created</h2>
