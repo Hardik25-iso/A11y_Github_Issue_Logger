@@ -139,3 +139,48 @@ def test_create_issue_translates_github_error(monkeypatch):
         asyncio.run(github.create_issue("owner/repo", generated_issue()))
     assert exc.value.status_code == 404
     assert "repository was not found" in exc.value.detail
+
+
+def test_create_issue_accepts_per_request_token_without_server_token(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    fake = patch_client(
+        monkeypatch,
+        FakeResponse(status_code=201, payload={"number": 99, "html_url": "https://github.com/owner/repo/issues/99"}),
+    )
+    result = asyncio.run(
+        github.create_issue("owner/repo", generated_issue(), token="github_pat_userprovided")
+    )
+    assert result["number"] == 99
+    # The per-request token must be the one sent to GitHub.
+    _, _, _, headers = fake.requests[-1]
+    assert headers["Authorization"] == "Bearer github_pat_userprovided"
+
+
+def test_create_issue_prefers_request_token_over_server_token(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "server-token")
+    fake = patch_client(
+        monkeypatch,
+        FakeResponse(status_code=201, payload={"number": 1, "html_url": "https://github.com/owner/repo/issues/1"}),
+    )
+    asyncio.run(github.create_issue("owner/repo", generated_issue(), token="ghp_requesttoken"))
+    _, _, _, headers = fake.requests[-1]
+    assert headers["Authorization"] == "Bearer ghp_requesttoken"
+
+
+def test_create_issue_falls_back_to_server_token(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "server-token")
+    fake = patch_client(
+        monkeypatch,
+        FakeResponse(status_code=201, payload={"number": 2, "html_url": "https://github.com/owner/repo/issues/2"}),
+    )
+    asyncio.run(github.create_issue("owner/repo", generated_issue()))
+    _, _, _, headers = fake.requests[-1]
+    assert headers["Authorization"] == "Bearer server-token"
+
+
+def test_search_issues_uses_per_request_token(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    fake = patch_client(monkeypatch, FakeResponse(payload={"items": []}))
+    asyncio.run(github.search_issues(scan_issue(), "owner/repo", token="ghp_searchtoken"))
+    _, _, _, headers = fake.requests[-1]
+    assert headers["Authorization"] == "Bearer ghp_searchtoken"

@@ -9,6 +9,21 @@ from backend.app.services.scanner import _SCAN_SEMAPHORE
 client = TestClient(app)
 
 
+def _valid_issue_data():
+    return {
+        "title": "[A11y] Search button has no accessible name",
+        "description": "The search button is missing an accessible name.",
+        "repro_steps": ["Open the page.", "Focus the search button."],
+        "expected_result": "The button is announced as Search.",
+        "actual_result": "The button is announced without a name.",
+        "severity": "High",
+        "labels": ["accessibility", "bug"],
+        "acceptance_criteria": ["The button has an accessible name."],
+        "environment": "Chrome and NVDA",
+        "wcag_reference": "https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html",
+    }
+
+
 def test_health():
     data = client.get("/health").json()
     assert data["status"] in ("ready", "degraded")
@@ -136,3 +151,39 @@ def test_config_reports_ollama_without_exposing_internal_url(monkeypatch):
     assert response.json()["ai_provider"] == "ollama"
     assert response.json()["ai_configured"] is True
     assert "private-ai-host" not in response.text
+
+
+def test_log_issue_rejects_malformed_github_token():
+    response = client.post(
+        "/api/log-issue",
+        json={"repo": "owner/repo", "issue_data": _valid_issue_data(), "github_token": "not-a-real-token"},
+    )
+    assert response.status_code == 422
+
+
+def test_log_issue_accepts_valid_token_format(monkeypatch):
+    # A well-formed PAT passes schema validation; without a real GitHub backend
+    # it then fails at the API call, but never with a 422 validation error.
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    response = client.post(
+        "/api/log-issue",
+        json={"repo": "owner/repo", "issue_data": _valid_issue_data(), "github_token": "ghp_validlookingtoken123"},
+    )
+    assert response.status_code != 422
+
+
+def test_log_issue_enforces_rate_limit():
+    payload = {"repo": "owner/repo", "issue_data": _valid_issue_data()}
+    statuses = [client.post("/api/log-issue", json=payload).status_code for _ in range(7)]
+    # /log-issue is capped at 5/minute; the limiter is reset between tests.
+    assert 429 in statuses
+    assert statuses.count(429) == 2  # requests 6 and 7 exceed the cap
+
+
+def test_search_issues_rejects_malformed_github_token():
+    scan = client.post("/api/scan", json={"url": "https://example.com"}).json()
+    response = client.post(
+        "/api/search-issues",
+        json={"issue": scan["issues"][0], "repo": "owner/repo", "github_token": "garbage"},
+    )
+    assert response.status_code == 422
