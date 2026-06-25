@@ -36,6 +36,10 @@ class FakeClient:
         self.requests.append(("POST", url, json, headers))
         return self.response
 
+    async def put(self, url, json=None, headers=None):
+        self.requests.append(("PUT", url, json, headers))
+        return self.response
+
 
 def scan_issue() -> ScanIssue:
     return ScanIssue(
@@ -184,3 +188,94 @@ def test_search_issues_uses_per_request_token(monkeypatch):
     asyncio.run(github.search_issues(scan_issue(), "owner/repo", token="ghp_searchtoken"))
     _, _, _, headers = fake.requests[-1]
     assert headers["Authorization"] == "Bearer ghp_searchtoken"
+
+
+# A 1x1 transparent PNG as a data URI.
+TINY_PNG = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+)
+
+
+def test_normalize_violations_carries_screenshot():
+    from backend.app.services.scanner import normalize_violations
+
+    violations = [
+        {
+            "id": "image-alt",
+            "help": "Images must have alternative text",
+            "impact": "critical",
+            "tags": ["wcag111"],
+            "nodes": [{"html": "<img>", "target": ["main img"]}],
+            "screenshot": TINY_PNG,
+        }
+    ]
+    issues = normalize_violations(violations)
+    assert issues[0].screenshot == TINY_PNG
+
+
+def test_markdown_body_embeds_screenshot_when_url_present():
+    body = github.markdown_body(generated_issue(), screenshot_url="https://raw.example/img.png")
+    assert "## Screenshot" in body
+    assert "![Captured element from the live accessibility scan](https://raw.example/img.png)" in body
+
+
+def test_markdown_body_omits_screenshot_section_when_absent():
+    body = github.markdown_body(generated_issue())
+    assert "## Screenshot" not in body
+
+
+def test_upload_screenshot_returns_download_url(monkeypatch):
+    fake = patch_client(
+        monkeypatch,
+        FakeResponse(status_code=201, payload={"content": {"download_url": "https://raw.example/x.png"}}),
+    )
+    url = asyncio.run(github._upload_screenshot("owner/repo", TINY_PNG, "ghp_token"))
+    assert url == "https://raw.example/x.png"
+    method, put_url, body, _ = fake.requests[-1]
+    assert method == "PUT"
+    assert "/contents/.a11y-screenshots/" in put_url
+    assert "data:image" not in body["content"]  # data-URI prefix stripped before commit
+
+
+def test_upload_screenshot_degrades_on_permission_error(monkeypatch):
+    patch_client(monkeypatch, FakeResponse(status_code=403, payload={"message": "Resource not accessible"}))
+    url = asyncio.run(github._upload_screenshot("owner/repo", TINY_PNG, "ghp_token"))
+    assert url is None
+
+
+def test_create_issue_embeds_uploaded_screenshot(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "server-token")
+    # One response serves both the PUT (content.download_url) and POST (number/html_url).
+    fake = patch_client(
+        monkeypatch,
+        FakeResponse(
+            status_code=201,
+            payload={
+                "content": {"download_url": "https://raw.example/shot.png"},
+                "number": 5,
+                "html_url": "https://github.com/owner/repo/issues/5",
+            },
+        ),
+    )
+    result = asyncio.run(github.create_issue("owner/repo", generated_issue(), screenshot=TINY_PNG))
+    assert result["number"] == 5
+    # The final POST body must embed the uploaded screenshot URL.
+    method, _, post_body, _ = fake.requests[-1]
+    assert method == "POST"
+    assert "https://raw.example/shot.png" in post_body["body"]
+
+
+def test_create_issue_still_succeeds_when_screenshot_upload_fails(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "server-token")
+    # PUT fails (403) but POST returns 201 — issue is created without the image.
+    # FakeClient returns the same response for both, so make it a 201 that lacks
+    # a download_url; _upload_screenshot then returns None.
+    fake = patch_client(
+        monkeypatch,
+        FakeResponse(status_code=201, payload={"number": 9, "html_url": "https://github.com/owner/repo/issues/9"}),
+    )
+    result = asyncio.run(github.create_issue("owner/repo", generated_issue(), screenshot=TINY_PNG))
+    assert result["number"] == 9
+    method, _, post_body, _ = fake.requests[-1]
+    assert "## Screenshot" not in post_body["body"]

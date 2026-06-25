@@ -19,6 +19,18 @@ Human review is mandatory. The tool drafts; you decide.
 
 ---
 
+## Advanced features
+
+- **Element screenshots** — on a live scan, the offending element is highlighted
+  and screenshotted as genuine evidence, shown in the review screen and embedded
+  into the logged GitHub issue (committed to `.a11y-screenshots/` in the target
+  repo; needs `Contents: write` on the token, degrades gracefully otherwise).
+- **Authenticated scans** — paste a Playwright `storageState` JSON under the
+  scan screen's advanced option to audit a page behind a login. The session is
+  used once for the scan and never persisted or logged.
+
+See [DESIGN_NOTES.md](DESIGN_NOTES.md) for the rationale and trade-offs behind both.
+
 ## Quick start
 
 ### Prerequisites

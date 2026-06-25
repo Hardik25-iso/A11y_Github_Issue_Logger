@@ -1,4 +1,4 @@
-from backend.app.services.scanner import _criterion, normalize_violations
+from backend.app.services.scanner import _criterion, _looks_like_login_wall, normalize_violations
 
 
 def test_normalize_violations_maps_axe_output():
@@ -95,3 +95,24 @@ def test_normalize_violations_empty_nodes():
     assert issues[0].element == ""
     assert issues[0].selector == ""
     assert issues[0].occurrences == 1
+
+
+def test_login_wall_detected_on_redirect_to_auth():
+    assert _looks_like_login_wall(
+        "https://app.example.com/dashboard", "https://accounts.google.com/signin"
+    )
+    assert _looks_like_login_wall(
+        "https://app.example.com/inbox", "https://app.example.com/login?next=/inbox"
+    )
+
+
+def test_login_wall_not_detected_when_url_unchanged():
+    assert not _looks_like_login_wall(
+        "https://example.com/page", "https://example.com/page"
+    )
+
+
+def test_login_wall_not_detected_for_ordinary_redirect():
+    assert not _looks_like_login_wall(
+        "https://example.com", "https://www.example.com/home"
+    )

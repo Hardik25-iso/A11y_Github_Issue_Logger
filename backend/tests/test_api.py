@@ -70,6 +70,30 @@ def test_scan_rejects_local_and_private_urls():
         assert response.status_code == 422
 
 
+def test_scan_accepts_valid_storage_state():
+    response = client.post(
+        "/api/scan",
+        json={"url": "https://example.com", "storage_state": {"cookies": [], "origins": []}},
+    )
+    assert response.status_code == 200
+
+
+def test_scan_rejects_storage_state_with_unknown_keys():
+    response = client.post(
+        "/api/scan",
+        json={"url": "https://example.com", "storage_state": {"password": "secret"}},
+    )
+    assert response.status_code == 422
+
+
+def test_scan_rejects_storage_state_with_wrong_types():
+    response = client.post(
+        "/api/scan",
+        json={"url": "https://example.com", "storage_state": {"cookies": "not-a-list"}},
+    )
+    assert response.status_code == 422
+
+
 def test_search_rejects_invalid_repository_format():
     scan = client.post("/api/scan", json={"url": "https://example.com"}).json()
     response = client.post(
