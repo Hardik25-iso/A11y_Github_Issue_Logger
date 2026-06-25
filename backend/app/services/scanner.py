@@ -1,11 +1,16 @@
 import asyncio
+import base64
 from pathlib import Path
 from typing import Any
 
 from backend.app.core.config import get_settings
-from backend.app.core.logging import log_error, log_info
+from backend.app.core.logging import log_error, log_info, log_warning
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import ScanIssue, ScanResponse
+
+# Cap how many element screenshots we capture per scan to bound response size
+# and scan time. The most severe violations come first after normalization.
+MAX_SCREENSHOTS = 10
 
 # Max concurrent live browser scans — prevents resource exhaustion
 _SCAN_SEMAPHORE = asyncio.Semaphore(3)
@@ -130,19 +135,23 @@ def fallback_scan(url: str, notice: str | None = None) -> ScanResponse:
     )
 
 
+def _node_selector(nodes: list[dict]) -> str:
+    raw_target = nodes[0].get("target", []) if nodes else []
+    # axe-core uses nested lists for elements inside iframes; flatten to strings
+    flat_target = [
+        part
+        for item in raw_target
+        for part in (item if isinstance(item, list) else [item])
+    ]
+    return " ".join(str(p) for p in flat_target) if flat_target else ""
+
+
 def normalize_violations(violations: list[dict]) -> list[ScanIssue]:
     issues = []
     for violation in violations:
         tags = violation.get("tags", [])
         criterion = _criterion(tags)
         nodes = violation.get("nodes", [])
-        raw_target = nodes[0].get("target", []) if nodes else []
-        # axe-core uses nested lists for elements inside iframes; flatten to strings
-        flat_target = [
-            part
-            for item in raw_target
-            for part in (item if isinstance(item, list) else [item])
-        ]
         issues.append(
             ScanIssue(
                 id=violation.get("id", "axe-violation"),
@@ -151,14 +160,34 @@ def normalize_violations(violations: list[dict]) -> list[ScanIssue]:
                 wcag_criterion=criterion,
                 wcag_url=_wcag_url(criterion, violation.get("helpUrl", "")),
                 element=nodes[0].get("html", "")[:300] if nodes else "",
-                selector=" ".join(str(p) for p in flat_target) if flat_target else "",
+                selector=_node_selector(nodes),
                 impact=violation.get("description", ""),
                 description=violation.get("help", ""),
                 occurrences=max(1, len(nodes)),
                 tags=tags,
+                screenshot=violation.get("screenshot"),
             )
         )
     return issues
+
+
+async def _capture_element_screenshot(page: Any, selector: str) -> str | None:
+    """Screenshot the offending element with a red highlight, as a base64 PNG
+    data URI. Returns None on any failure — a missing screenshot must never
+    block a scan or fabricate evidence."""
+    if not selector:
+        return None
+    try:
+        locator = page.locator(selector).first
+        await locator.scroll_into_view_if_needed(timeout=2000)
+        # Inset box-shadow stays within the element's box, so it is always
+        # included in the element screenshot (unlike outline, which can clip).
+        await locator.evaluate("el => { el.style.boxShadow = 'inset 0 0 0 3px #ff3b3b'; }")
+        png_bytes = await locator.screenshot(timeout=3000)
+        return "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+    except Exception as exc:
+        log_warning(f"Screenshot capture skipped for selector {selector!r}: {type(exc).__name__}")
+        return None
 
 
 def axe_script_path() -> Path:
@@ -203,7 +232,11 @@ async def _run_axe(url: str, axe_path: Path) -> list[dict]:
             validate_resolved_public_url(page.url)
             await page.add_script_tag(path=str(axe_path))
             result = await page.evaluate("async () => await axe.run(document)")
-            return result.get("violations", [])
+            violations = result.get("violations", [])
+            for violation in violations[:MAX_SCREENSHOTS]:
+                selector = _node_selector(violation.get("nodes", []))
+                violation["screenshot"] = await _capture_element_screenshot(page, selector)
+            return violations
         finally:
             await context.close()
     finally:

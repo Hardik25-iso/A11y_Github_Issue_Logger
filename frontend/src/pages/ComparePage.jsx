@@ -73,6 +73,12 @@ export default function ComparePage({ state, setState, back, next }) {
             <dt>Occurrences</dt>
             <dd>{state.selected.occurrences}</dd>
           </dl>
+          {state.selected.screenshot && (
+            <figure className="element-screenshot">
+              <img src={state.selected.screenshot} alt={`Captured element for: ${state.selected.title}`} />
+              <figcaption>Captured from the live scan · highlighted in red</figcaption>
+            </figure>
+          )}
         </div>
 
         <div className="panel">

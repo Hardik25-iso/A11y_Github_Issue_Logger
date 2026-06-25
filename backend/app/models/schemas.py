@@ -24,6 +24,9 @@ class ScanIssue(BaseModel):
     description: str
     occurrences: int = Field(ge=1)
     tags: list[str]
+    # Base64 PNG data URI of the offending element, captured only on a live
+    # scan. None for fallback/demo issues — never fabricate scan evidence.
+    screenshot: str | None = None
 
 
 class ScanRequest(BaseModel):

@@ -763,6 +763,23 @@ footer a:hover { color: var(--accent-strong); }
   margin-top: 4px;
 }
 
+.element-screenshot {
+  margin: 16px 0 0;
+}
+.element-screenshot img {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+}
+.element-screenshot figcaption {
+  margin-top: 6px;
+  font-size: .72rem;
+  color: var(--text-muted);
+  font-family: "JetBrains Mono", monospace;
+}
+
 /* ─── Reference items ────────────────────────────────────────────────── */
 .reference-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 
