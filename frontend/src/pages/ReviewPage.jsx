@@ -65,6 +65,7 @@ export default function ReviewPage({ state, setState, back }) {
     try {
       const body = { repo, issue_data: state.generated };
       if (pat) body.github_token = pat;
+      if (state.selected?.screenshot) body.screenshot = state.selected.screenshot;
       setResult(await postJson("/api/log-issue", body));
     } catch (err) {
       setError(err.message);
@@ -143,6 +144,14 @@ export default function ReviewPage({ state, setState, back }) {
           {copied ? "✓ Copied" : "Copy Markdown"}
         </button>
       </div>
+
+      {state.selected?.screenshot && (
+        <p className="muted" style={{ fontSize: ".78rem", marginTop: 12 }}>
+          A captured element screenshot will be committed to <code>.a11y-screenshots/</code> in
+          the target repo and embedded in the issue. Requires <code>Contents: write</code> on your
+          token; if unavailable, the issue is still logged without the image.
+        </p>
+      )}
 
       {error && <p className="alert error" role="alert">{error}</p>}
 

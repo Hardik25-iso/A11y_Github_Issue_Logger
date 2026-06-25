@@ -135,6 +135,9 @@ class LogRequest(BaseModel):
     repo: str
     issue_data: GeneratedIssue
     github_token: str | None = None
+    # Optional base64 PNG data URI carried over from the scanned issue, embedded
+    # into the logged issue. Bounded to keep repo commits small.
+    screenshot: str | None = None
 
     @field_validator("repo")
     @classmethod
@@ -146,6 +149,17 @@ class LogRequest(BaseModel):
     def validate_github_token(cls, value: str | None) -> str | None:
         if value is not None and (not _GITHUB_TOKEN.match(value) or len(value) > 256):
             raise ValueError("Invalid GitHub token format")
+        return value
+
+    @field_validator("screenshot")
+    @classmethod
+    def validate_screenshot(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if not value.startswith("data:image/png;base64,"):
+            raise ValueError("Screenshot must be a PNG data URI")
+        if len(value) > 6_000_000:  # ~4.5 MB decoded; bounds repo commit size
+            raise ValueError("Screenshot exceeds the maximum allowed size")
         return value
 
 

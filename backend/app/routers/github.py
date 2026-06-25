@@ -25,5 +25,5 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
 @router.post("/log-issue", response_model=LogResponse)
 @limiter.limit("5/minute")
 async def log_issue(request: Request, body: LogRequest) -> LogResponse:
-    result = await create_issue(body.repo, body.issue_data, body.github_token)
+    result = await create_issue(body.repo, body.issue_data, body.github_token, body.screenshot)
     return LogResponse(issue_number=result["number"], html_url=result["html_url"])
