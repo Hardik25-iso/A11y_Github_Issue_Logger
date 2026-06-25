@@ -35,6 +35,10 @@ WCAG_URLS = {
 
 BLOCKED_RESOURCE_TYPES = {"font", "image", "media"}
 
+# Substrings that suggest a scan was redirected to a login/auth wall, so we can
+# warn that results may reflect the login screen rather than the intended page.
+LOGIN_INDICATORS = ("login", "signin", "sign-in", "/auth", "sso", "oauth", "accounts.")
+
 _PW_MOD = "playwright.async_api"
 
 
@@ -207,8 +211,10 @@ async def _guarded_route(route: Any) -> None:
     await route.continue_()
 
 
-async def _run_axe(url: str, axe_path: Path) -> list[dict]:
-    """Run axe-core against url, reusing the warm shared browser."""
+async def _run_axe(url: str, axe_path: Path, storage_state: dict | None = None) -> tuple[list[dict], str]:
+    """Run axe-core against url, reusing the warm shared browser. Returns the
+    violations and the final URL (post-redirect) so callers can detect a
+    login-wall redirect."""
     global _browser
     settings = get_settings()
 
@@ -224,19 +230,22 @@ async def _run_axe(url: str, axe_path: Path) -> list[dict]:
         own_browser = False
 
     try:
-        context = await browser.new_context()
+        # storage_state injects the caller's session (cookies/localStorage) for
+        # this scan only; the context is discarded immediately afterwards.
+        context = await browser.new_context(storage_state=storage_state)
         try:
             page = await context.new_page()
             await page.route("**/*", _guarded_route)
             await page.goto(url, wait_until="domcontentloaded", timeout=settings.scan_timeout_ms)
             validate_resolved_public_url(page.url)
+            final_url = page.url
             await page.add_script_tag(path=str(axe_path))
             result = await page.evaluate("async () => await axe.run(document)")
             violations = result.get("violations", [])
             for violation in violations[:MAX_SCREENSHOTS]:
                 selector = _node_selector(violation.get("nodes", []))
                 violation["screenshot"] = await _capture_element_screenshot(page, selector)
-            return violations
+            return violations, final_url
         finally:
             await context.close()
     finally:
@@ -244,7 +253,14 @@ async def _run_axe(url: str, axe_path: Path) -> list[dict]:
             await browser.close()
 
 
-async def scan_url(url: str) -> ScanResponse:
+def _looks_like_login_wall(requested_url: str, final_url: str) -> bool:
+    if final_url == requested_url:
+        return False
+    lowered = final_url.lower()
+    return any(indicator in lowered for indicator in LOGIN_INDICATORS)
+
+
+async def scan_url(url: str, storage_state: dict | None = None) -> ScanResponse:
     settings = get_settings()
     if not settings.enable_live_scan:
         return fallback_scan(url)
@@ -256,10 +272,17 @@ async def scan_url(url: str) -> ScanResponse:
             return fallback_scan(url, "Local axe-core bundle is missing; demo results shown.")
 
         async with _SCAN_SEMAPHORE:
-            violations = await _run_axe(url, axe_path)
+            violations, final_url = await _run_axe(url, axe_path, storage_state)
 
         issues = normalize_violations(violations)
-        return ScanResponse(url=url, issues=issues, summary=_summary(issues), source="live")
+        notice = None
+        if _looks_like_login_wall(url, final_url):
+            notice = (
+                "The page redirected to what looks like a login screen, so these "
+                "results may reflect the login page rather than the intended page. "
+                "Provide a valid session (storage state) to scan authenticated content."
+            )
+        return ScanResponse(url=url, issues=issues, summary=_summary(issues), source="live", notice=notice)
     except Exception as exc:
         log_error(f"Live scan failed for url={url}: {type(exc).__name__}: {exc}", exc=exc)
         return fallback_scan(url, f"Live scan failed; demo results shown. {type(exc).__name__}")

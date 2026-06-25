@@ -13,6 +13,7 @@ const EXAMPLE_URLS = [
 
 export default function ScanPage({ state, setState, next }) {
   const [url, setUrl] = useState(state.url || "");
+  const [authState, setAuthState] = useState("");
   const [filter, setFilter] = useState("All");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,8 +27,20 @@ export default function ScanPage({ state, setState, next }) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    let storageState = null;
+    if (authState.trim()) {
+      try {
+        storageState = JSON.parse(authState);
+      } catch {
+        setError("Session state is not valid JSON. Paste the output of a Playwright storageState file.");
+        setBusy(false);
+        return;
+      }
+    }
     try {
-      const result = await postJson("/api/scan", { url });
+      const body = { url };
+      if (storageState) body.storage_state = storageState;
+      const result = await postJson("/api/scan", body);
       setState((v) => ({ ...v, url, scan: result, selected: null, similar: null, reference: null, generated: null }));
     } catch (err) {
       setError(err.message);
@@ -87,6 +100,22 @@ export default function ScanPage({ state, setState, next }) {
             </button>
           ))}
         </div>
+
+        <details className="auth-scan">
+          <summary>Scan a page behind a login (advanced)</summary>
+          <p className="auth-scan-help">
+            Paste a Playwright <code>storageState</code> JSON (cookies + localStorage) to scan an
+            authenticated page. It is used only for this scan and never stored or logged. Note: some
+            providers (e.g. Google) block automated browsers even with a valid session.
+          </p>
+          <textarea
+            value={authState}
+            onChange={(e) => setAuthState(e.target.value)}
+            placeholder='{"cookies": [...], "origins": [...]}'
+            aria-label="Session storage state JSON for authenticated scanning"
+            spellCheck="false"
+          />
+        </details>
       </form>
 
       {error && (

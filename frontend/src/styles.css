@@ -425,6 +425,32 @@ footer a:hover { color: var(--accent-strong); }
 }
 .chip:active:not(:disabled) { transform: scale(.97); }
 
+.auth-scan {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.auth-scan summary {
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.auth-scan summary:hover { color: var(--accent); }
+.auth-scan-help {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin: 10px 0;
+  line-height: 1.55;
+}
+.auth-scan textarea {
+  width: 100%;
+  min-height: 90px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: .78rem;
+  resize: vertical;
+}
+
 /* ─── Results header ─────────────────────────────────────────────────── */
 .results-header {
   display: flex;

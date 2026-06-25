@@ -10,4 +10,4 @@ router = APIRouter(prefix="/api", tags=["scan"])
 @router.post("/scan", response_model=ScanResponse)
 @limiter.limit("10/minute")
 async def scan(request: Request, body: ScanRequest) -> ScanResponse:
-    return await scan_url(str(body.url))
+    return await scan_url(str(body.url), body.storage_state)

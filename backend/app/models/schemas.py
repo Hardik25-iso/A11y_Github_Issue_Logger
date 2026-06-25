@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Literal
 
@@ -31,11 +32,29 @@ class ScanIssue(BaseModel):
 
 class ScanRequest(BaseModel):
     url: HttpUrl
+    # Optional Playwright storage state (cookies + localStorage) for scanning a
+    # page behind a login. Used once for the scan, never persisted or logged.
+    storage_state: dict | None = None
 
     @field_validator("url")
     @classmethod
     def require_public_url(cls, value: HttpUrl) -> HttpUrl:
         validate_public_url(str(value))
+        return value
+
+    @field_validator("storage_state")
+    @classmethod
+    def validate_storage_state(cls, value: dict | None) -> dict | None:
+        if value is None:
+            return value
+        allowed = {"cookies", "origins"}
+        if not set(value).issubset(allowed):
+            raise ValueError("storage_state may only contain 'cookies' and 'origins'")
+        for key in allowed:
+            if key in value and not isinstance(value[key], list):
+                raise ValueError(f"storage_state '{key}' must be a list")
+        if len(json.dumps(value)) > 1_000_000:
+            raise ValueError("storage_state exceeds the maximum allowed size")
         return value
 
 
