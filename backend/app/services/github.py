@@ -167,7 +167,7 @@ def fallback_results(issue: ScanIssue) -> list[SimilarIssue]:
 async def _ai_rank(issue: ScanIssue, results: list[SimilarIssue]) -> list[SimilarIssue]:
     """Re-score results using AI; returns unchanged list if AI is unavailable."""
     from backend.app.prompts.similarity_ranking import SYSTEM_PROMPT, similarity_ranking_prompt
-    from backend.app.services.ai_client import AIProviderError, generate_json
+    from backend.app.services.ai_client import generate_json
 
     candidates = [{"number": r.number, "title": r.title, "body": r.body} for r in results]
     try:
