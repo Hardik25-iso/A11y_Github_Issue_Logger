@@ -82,7 +82,20 @@ export default function ComparePage({ state, setState, back, next }) {
         </div>
 
         <div className="panel">
-          <p className="panel-eyebrow">Matching GitHub Issues in {repo || "repository"}</p>
+          <div className="row-between" style={{ marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+            <p className="panel-eyebrow" style={{ marginBottom: 0 }}>
+              Matching GitHub Issues in {state.repo || "repository"}
+            </p>
+            {!busy && similar && (similar.source === "github" ? (
+              <span className="source-badge live" aria-label="Source: live GitHub search">
+                Live GitHub
+              </span>
+            ) : (
+              <span className="source-badge demo" aria-label="Source: sample data, GitHub search unavailable">
+                Sample data · GitHub unavailable
+              </span>
+            ))}
+          </div>
 
           {busy && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0", color: "var(--text-muted)" }}>
