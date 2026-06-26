@@ -257,6 +257,18 @@ footer a:hover { color: var(--accent-strong); }
   margin-bottom: 8px;
 }
 .muted { color: var(--text-muted); }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 .row { display: flex; align-items: center; gap: 10px; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 
@@ -322,6 +334,18 @@ footer a:hover { color: var(--accent-strong); }
   background: var(--accent);
   color: var(--bg);
   border-color: var(--accent);
+}
+
+/* Completed steps render as buttons — reset button chrome, keep the step look */
+button.step {
+  background: transparent;
+  font-size: .8rem;
+  font-weight: 600;
+}
+button.step:hover:not(:disabled) {
+  background: rgba(74,222,128,.1);
+  border-color: rgba(74,222,128,.3);
+  color: var(--ok);
 }
 
 /* ─── Hero ───────────────────────────────────────────────────────────── */
@@ -472,31 +496,40 @@ footer a:hover { color: var(--accent-strong); }
   font-size: .8rem;
   color: var(--text-muted);
 }
-.ai-powered-pill {
+/* Source badge — honestly labels whether results are a live scan or demo data */
+.source-badge {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: var(--accent-dim);
-  border: 1px solid rgba(56,189,248,.28);
   border-radius: var(--r-pill);
   padding: .4rem 1rem;
   font-size: .7rem;
   font-weight: 700;
-  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: .1em;
   white-space: nowrap;
   flex-shrink: 0;
   align-self: flex-start;
 }
-.ai-powered-pill::before {
+.source-badge::before {
   content: '';
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
   flex-shrink: 0;
 }
+.source-badge.live {
+  background: rgba(74,222,128,.1);
+  border: 1px solid rgba(74,222,128,.3);
+  color: var(--ok);
+}
+.source-badge.live::before { background: var(--ok); }
+.source-badge.demo {
+  background: var(--high-bg);
+  border: 1px solid var(--high-border);
+  color: var(--high);
+}
+.source-badge.demo::before { background: var(--high); }
 
 /* ─── Summary pills ──────────────────────────────────────────────────── */
 .summary {
