@@ -4,6 +4,8 @@ Turn WCAG accessibility findings into structured, reviewable GitHub issues — i
 
 Scan any public URL with axe-core, find existing issues in your GitHub repo to avoid duplicates, generate a complete issue draft, review it, and log it. No accessibility finding gets lost in a Slack thread or a spreadsheet again.
 
+**🔗 Live demo: https://a11y-github-issue-logger.vercel.app**
+
 ---
 
 ## How it works

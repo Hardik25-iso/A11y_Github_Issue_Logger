@@ -23,6 +23,9 @@ coverage/
 .claude/
 .vscode/
 
+# Stray local screenshots
+Screenshot*.png
+
 # Internal planning docs
 BACKGROUND.md
 PROGRESS.md
