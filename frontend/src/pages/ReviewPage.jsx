@@ -2,6 +2,7 @@ import { useState } from "react";
 import IssueEditor from "../components/IssueEditor";
 import { CheckCircleIcon, CheckIcon, ExternalLinkIcon } from "../components/icons";
 import { postJson } from "../services/api";
+import { recordLoggedIssue } from "../services/history";
 
 function buildMarkdown(issue) {
   const steps = issue.repro_steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
@@ -49,7 +50,9 @@ export default function ReviewPage({ state, setState, back, reset }) {
       const body = { repo, issue_data: state.generated };
       if (pat) body.github_token = pat;
       if (state.selected?.screenshot) body.screenshot = state.selected.screenshot;
-      setResult(await postJson("/api/log-issue", body));
+      const logged = await postJson("/api/log-issue", body);
+      setResult(logged);
+      recordLoggedIssue({ url: state.url, number: logged.issue_number, htmlUrl: logged.html_url });
     } catch (err) {
       setError(err.message);
     } finally {

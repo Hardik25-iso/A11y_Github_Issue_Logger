@@ -2,27 +2,35 @@ import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 /**
- * Self-audit: the A11y Issue Logger must pass its own accessibility bar.
- * Fails CI on any serious or critical axe violation.
+ * Self-audit: the product's top-level routes must pass their own accessibility
+ * bar. Fails CI on any serious or critical axe violation.
+ * (Inner wizard states are covered in axe-steps.spec.js.)
  */
-test("home page has no serious or critical axe violations", async ({ page }) => {
-  await page.goto("/");
-  await page.waitForLoadState("networkidle");
+const ROUTES = [
+  { name: "landing page (/)", path: "/" },
+  { name: "workspace (/app)", path: "/app" },
+];
 
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
+for (const route of ROUTES) {
+  test(`${route.name} has no serious or critical axe violations`, async ({ page }) => {
+    await page.goto(route.path);
+    await page.waitForLoadState("networkidle");
 
-  const serious = results.violations.filter((v) =>
-    ["serious", "critical"].includes(v.impact ?? ""),
-  );
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
 
-  if (serious.length > 0) {
-    const summary = serious
-      .map((v) => `  [${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} node(s))`)
-      .join("\n");
-    throw new Error(`Found ${serious.length} serious/critical axe violation(s):\n${summary}`);
-  }
+    const serious = results.violations.filter((v) =>
+      ["serious", "critical"].includes(v.impact ?? ""),
+    );
 
-  expect(serious).toHaveLength(0);
-});
+    if (serious.length > 0) {
+      const summary = serious
+        .map((v) => `  [${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} node(s))`)
+        .join("\n");
+      throw new Error(`Found ${serious.length} serious/critical axe violation(s) on ${route.path}:\n${summary}`);
+    }
+
+    expect(serious).toHaveLength(0);
+  });
+}

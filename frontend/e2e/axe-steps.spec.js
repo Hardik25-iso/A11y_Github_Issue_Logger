@@ -98,7 +98,7 @@ async function expectNoSeriousViolations(page) {
 }
 
 async function gotoScanResults(page) {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("Page URL to audit").fill("https://example.com");
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
   await expect(page.getByText("Images must have alternative text")).toBeVisible();
