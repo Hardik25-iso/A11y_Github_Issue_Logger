@@ -1072,9 +1072,12 @@ button.step:hover:not(:disabled) {
   font-size: .66rem;
 }
 .ai-banner .badge::before {
-  content: '●';
-  font-size: .55rem;
-  margin-right: 2px;
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .editor-grid {

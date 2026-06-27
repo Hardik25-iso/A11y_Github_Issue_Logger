@@ -1,12 +1,6 @@
-const STEP_LABELS = ["Scan", "Compare", "Generate", "Review & Log"];
+import { CheckIcon } from "./icons";
 
-function CheckIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+const STEP_LABELS = ["Scan", "Compare", "Generate", "Review & Log"];
 
 export default function Steps({ step, onNavigate }) {
   return (
@@ -19,7 +13,7 @@ export default function Steps({ step, onNavigate }) {
         const inner = (
           <>
             <span className="step-num" aria-hidden="true">{num}</span>
-            <span className="step-check" aria-hidden="true"><CheckIcon /></span>
+            <span className="step-check" aria-hidden="true"><CheckIcon size={13} /></span>
             <span className="step-label">{label}</span>
           </>
         );

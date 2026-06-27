@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import IssueCard from "../components/IssueCard";
+import { BoltIcon } from "../components/icons";
 import { postJson } from "../services/api";
 
 const SEVERITIES = ["Critical", "High", "Medium", "Low"];
@@ -90,7 +91,7 @@ export default function ScanPage({ state, setState, next }) {
                 Scanning…
               </>
             ) : (
-              <>⚡ Run Accessibility Scan</>
+              <><BoltIcon size={17} aria-hidden="true" />Run Accessibility Scan</>
             )}
           </button>
         </div>

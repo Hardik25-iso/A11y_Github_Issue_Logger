@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Badge from "../components/Badge";
+import { ChevronDownIcon, PlusIcon } from "../components/icons";
 import { postJson } from "../services/api";
 
 export default function ComparePage({ state, setState, back, next }) {
@@ -67,9 +68,7 @@ export default function ComparePage({ state, setState, back, next }) {
                 <h2>{state.selected.title}</h2>
               </span>
             </span>
-            <svg className="finding-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronDownIcon className="finding-chevron" size={16} />
           </summary>
           <div className="finding-body">
             <p className="finding-impact">{state.selected.impact}</p>
@@ -152,7 +151,9 @@ export default function ComparePage({ state, setState, back, next }) {
                 className={`reference scratch-ref${state.reference === "none" ? " selected" : ""}`}
                 onClick={() => setState((v) => ({ ...v, reference: "none" }))}
               >
-                ＋ Create from scratch — no reference issue
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <PlusIcon size={16} aria-hidden="true" /> Create from scratch — no reference issue
+                </span>
               </button>
             </div>
           )}

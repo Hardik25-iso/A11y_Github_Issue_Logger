@@ -1,24 +1,7 @@
 import { useState } from "react";
 import IssueEditor from "../components/IssueEditor";
+import { CheckCircleIcon, CheckIcon, ExternalLinkIcon } from "../components/icons";
 import { postJson } from "../services/api";
-
-function CheckCircleIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="16" fill="currentColor" opacity=".15" />
-      <path d="M10 16l4 4 8-8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M5 2H2a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9M8 1h5m0 0v5m0-5L6 8"
-        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function buildMarkdown(issue) {
   const steps = issue.repro_steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
@@ -94,7 +77,7 @@ export default function ReviewPage({ state, setState, back, reset }) {
           <h2>Issue #{result.issue_number} created</h2>
           <p>The accessibility issue has been logged to <strong>{repo}</strong>.</p>
           <a href={result.html_url} target="_blank" rel="noreferrer">
-            Open on GitHub <ExternalLinkIcon />
+            Open on GitHub <ExternalLinkIcon size={15} />
           </a>
         </div>
         <div className="actions" style={{ justifyContent: "center" }}>
@@ -142,7 +125,7 @@ export default function ReviewPage({ state, setState, back, reset }) {
           />
         </label>
         <button onClick={copyMarkdown} aria-live="polite">
-          {copied ? "✓ Copied" : "Copy Markdown"}
+          {copied ? <><CheckIcon size={15} aria-hidden="true" />Copied</> : "Copy Markdown"}
         </button>
       </div>
 
