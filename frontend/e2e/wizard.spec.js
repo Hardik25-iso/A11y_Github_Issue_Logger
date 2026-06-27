@@ -117,7 +117,7 @@ function mockApi(page) {
 
 test.beforeEach(async ({ page }) => {
   mockApi(page);
-  await page.goto("/");
+  await page.goto("/app"); // the wizard now lives at /app; / is the landing page
 });
 
 // ── Step 1: Scan ─────────────────────────────────────────────────────────────

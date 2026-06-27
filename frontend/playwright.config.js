@@ -15,12 +15,12 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: ["**/axe-self.spec.js"],
+      testIgnore: ["**/axe-self.spec.js", "**/axe-steps.spec.js"],
     },
     {
       name: "axe",
       use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:4173" },
-      testMatch: ["**/axe-self.spec.js"],
+      testMatch: ["**/axe-self.spec.js", "**/axe-steps.spec.js"],
     },
   ],
   webServer: [

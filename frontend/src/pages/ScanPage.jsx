@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import IssueCard from "../components/IssueCard";
+import RecentScans from "../components/RecentScans";
 import { BoltIcon } from "../components/icons";
 import { postJson } from "../services/api";
+import { recordScan } from "../services/history";
 
 const SEVERITIES = ["Critical", "High", "Medium", "Low"];
 
@@ -49,6 +51,7 @@ export default function ScanPage({ state, setState, next }) {
       if (storageState) body.storage_state = storageState;
       const result = await postJson("/api/scan", body);
       setState((v) => ({ ...v, url, scan: result, selected: null, similar: null, reference: null, generated: null }));
+      recordScan({ url, source: result.source, total: result.issues?.length ?? 0 });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -125,6 +128,8 @@ export default function ScanPage({ state, setState, next }) {
           />
         </details>
       </form>
+
+      {!state.scan && !busy && <RecentScans onPick={setUrl} />}
 
       {error && (
         <p id="scan-error" className="alert error" role="alert">{error}</p>
