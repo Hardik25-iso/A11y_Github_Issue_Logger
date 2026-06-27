@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import Steps from "../components/Steps";
 
 describe("Steps", () => {
@@ -34,5 +35,19 @@ describe("Steps", () => {
   it("has accessible nav landmark with label", () => {
     render(<Steps step={1} />);
     expect(screen.getByRole("navigation", { name: /workflow progress/i })).toBeInTheDocument();
+  });
+
+  it("renders completed steps as buttons that navigate back", async () => {
+    const onNavigate = vi.fn();
+    render(<Steps step={3} onNavigate={onNavigate} />);
+    const scanStep = screen.getByRole("button", { name: /go back to step 1: scan/i });
+    await userEvent.click(scanStep);
+    expect(onNavigate).toHaveBeenCalledWith(1);
+  });
+
+  it("does not make the active or future steps clickable", () => {
+    render(<Steps step={2} onNavigate={() => {}} />);
+    expect(screen.queryByRole("button", { name: /compare/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate/i })).not.toBeInTheDocument();
   });
 });

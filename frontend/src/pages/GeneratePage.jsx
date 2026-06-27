@@ -61,7 +61,7 @@ export default function GeneratePage({ state, setState, back, next }) {
         />
       )}
       <div className="actions">
-        <button onClick={back}>Back</button>
+        <button className="ghost" onClick={back}>← Back</button>
         <button className="primary" disabled={!state.generated} onClick={next}>Review and log</button>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Badge from "../components/Badge";
+import { ChevronDownIcon, PlusIcon } from "../components/icons";
 import { postJson } from "../services/api";
 
 export default function ComparePage({ state, setState, back, next }) {
@@ -58,31 +59,51 @@ export default function ComparePage({ state, setState, back, next }) {
       {error && <p className="alert error" role="alert">{error}</p>}
 
       <div className="compare">
-        <div className="panel sticky">
-          <p className="panel-eyebrow">Current A11y Issue</p>
-          <Badge tone={state.selected.severity}>{state.selected.severity}</Badge>
-          <h2 style={{ marginTop: 12, fontSize: "1.1rem" }}>{state.selected.title}</h2>
-          <p style={{ marginTop: 8, fontSize: ".9rem", color: "var(--text-secondary)", lineHeight: 1.55 }}>
-            {state.selected.impact}
-          </p>
-          <dl>
-            <dt>WCAG criterion</dt>
-            <dd>{state.selected.wcag_criterion}</dd>
-            <dt>Affected element</dt>
-            <dd><code>{state.selected.element || state.selected.selector}</code></dd>
-            <dt>Occurrences</dt>
-            <dd>{state.selected.occurrences}</dd>
-          </dl>
-          {state.selected.screenshot && (
-            <figure className="element-screenshot">
-              <img src={state.selected.screenshot} alt={`Captured element for: ${state.selected.title}`} />
-              <figcaption>Captured from the live scan · highlighted in red</figcaption>
-            </figure>
-          )}
-        </div>
+        <details className="panel sticky finding" open>
+          <summary className="finding-summary">
+            <span className="finding-summary-text">
+              <span className="panel-eyebrow">Current A11y Issue</span>
+              <span className="finding-title-row">
+                <Badge tone={state.selected.severity}>{state.selected.severity}</Badge>
+                <h2>{state.selected.title}</h2>
+              </span>
+            </span>
+            <ChevronDownIcon className="finding-chevron" size={16} />
+          </summary>
+          <div className="finding-body">
+            <p className="finding-impact">{state.selected.impact}</p>
+            <dl>
+              <dt>WCAG criterion</dt>
+              <dd>{state.selected.wcag_criterion}</dd>
+              <dt>Affected element</dt>
+              <dd><code>{state.selected.element || state.selected.selector}</code></dd>
+              <dt>Occurrences</dt>
+              <dd>{state.selected.occurrences}</dd>
+            </dl>
+            {state.selected.screenshot && (
+              <figure className="element-screenshot">
+                <img src={state.selected.screenshot} alt={`Captured element for: ${state.selected.title}`} />
+                <figcaption>Captured from the live scan · highlighted in red</figcaption>
+              </figure>
+            )}
+          </div>
+        </details>
 
         <div className="panel">
-          <p className="panel-eyebrow">Matching GitHub Issues in {repo || "repository"}</p>
+          <div className="row-between" style={{ marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+            <p className="panel-eyebrow" style={{ marginBottom: 0 }}>
+              Matching GitHub Issues in {state.repo || "repository"}
+            </p>
+            {!busy && similar && (similar.source === "github" ? (
+              <span className="source-badge live" aria-label="Source: live GitHub search">
+                Live GitHub
+              </span>
+            ) : (
+              <span className="source-badge demo" aria-label="Source: sample data, GitHub search unavailable">
+                Sample data · GitHub unavailable
+              </span>
+            ))}
+          </div>
 
           {busy && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0", color: "var(--text-muted)" }}>
@@ -97,12 +118,13 @@ export default function ComparePage({ state, setState, back, next }) {
 
           {!busy && similar && (
             <div className="reference-list">
-              {similar.similar_issues.map((item) => (
+              {similar.similar_issues.map((item, idx) => (
                 <button
                   type="button"
                   className={`reference${state.reference?.number === item.number ? " selected" : ""}`}
                   onClick={() => setState((v) => ({ ...v, reference: item }))}
                   key={item.number}
+                  style={{ "--i": idx }}
                 >
                   <div className="row-between">
                     <h4>#{item.number} {item.title}</h4>
@@ -129,7 +151,9 @@ export default function ComparePage({ state, setState, back, next }) {
                 className={`reference scratch-ref${state.reference === "none" ? " selected" : ""}`}
                 onClick={() => setState((v) => ({ ...v, reference: "none" }))}
               >
-                ＋ Create from scratch — no reference issue
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <PlusIcon size={16} aria-hidden="true" /> Create from scratch — no reference issue
+                </span>
               </button>
             </div>
           )}

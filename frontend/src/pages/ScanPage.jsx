@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import IssueCard from "../components/IssueCard";
+import { BoltIcon } from "../components/icons";
 import { postJson } from "../services/api";
 
 const SEVERITIES = ["Critical", "High", "Medium", "Low"];
@@ -22,6 +23,12 @@ export default function ScanPage({ state, setState, next }) {
     () => state.scan?.issues?.filter((i) => filter === "All" || i.severity === filter) ?? [],
     [state.scan, filter],
   );
+
+  const liveMessage = busy
+    ? "Running accessibility scan…"
+    : state.scan
+      ? `${issues.length} ${issues.length === 1 ? "issue" : "issues"} ${filter === "All" ? "found" : `match the ${filter} filter`}.`
+      : "";
 
   async function scan(event) {
     event.preventDefault();
@@ -51,6 +58,7 @@ export default function ScanPage({ state, setState, next }) {
 
   return (
     <section>
+      <p className="visually-hidden" role="status" aria-live="polite">{liveMessage}</p>
       <div className="hero">
         <p className="eyebrow">Accessibility · GitHub Integration</p>
         <h1>
@@ -83,7 +91,7 @@ export default function ScanPage({ state, setState, next }) {
                 Scanning…
               </>
             ) : (
-              <>⚡ Run Accessibility Scan</>
+              <><BoltIcon size={17} aria-hidden="true" />Run Accessibility Scan</>
             )}
           </button>
         </div>
@@ -122,7 +130,15 @@ export default function ScanPage({ state, setState, next }) {
         <p id="scan-error" className="alert error" role="alert">{error}</p>
       )}
 
-      {state.scan && (
+      {busy && (
+        <div className="loading-screen" style={{ minHeight: "32vh" }}>
+          <div className="spinner" aria-hidden="true" />
+          <h1>Running accessibility scan…</h1>
+          <p>Loading the page in a headless browser and running the axe-core audit. This can take a few seconds.</p>
+        </div>
+      )}
+
+      {!busy && state.scan && (
         <>
           {state.scan.notice && (
             <div className="alert" role="status">{state.scan.notice}</div>
@@ -133,7 +149,15 @@ export default function ScanPage({ state, setState, next }) {
               <h2>Accessibility Audit Results</h2>
               <p className="result-url">{state.scan.url}</p>
             </div>
-            <span className="ai-powered-pill" aria-label="AI powered scan">AI POWERED</span>
+            {state.scan.source === "live" ? (
+              <span className="source-badge live" aria-label="Source: live axe-core scan">
+                Live scan · axe-core
+              </span>
+            ) : (
+              <span className="source-badge demo" aria-label="Source: demo data, not a live scan">
+                Demo data · not a live scan
+              </span>
+            )}
           </div>
 
           <div className="summary" aria-label="Issue summary by severity">
@@ -151,7 +175,7 @@ export default function ScanPage({ state, setState, next }) {
               <h2>Select one issue to find similar GitHub issues</h2>
             </div>
             <label htmlFor="severity-filter">
-              <span className="muted" style={{ fontSize: ".72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em" }}>Filter</span>
+              <span className="muted" style={{ fontSize: ".72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em" }}>Filter</span>
               <select
                 id="severity-filter"
                 value={filter}
@@ -170,8 +194,8 @@ export default function ScanPage({ state, setState, next }) {
             </div>
           ) : (
             <div className="issue-grid" role="list" aria-label="Accessibility issues">
-              {issues.map((issue) => (
-                <div role="listitem" key={issue.id}>
+              {issues.map((issue, idx) => (
+                <div role="listitem" key={issue.id} style={{ "--i": idx }}>
                   <IssueCard
                     issue={issue}
                     selected={state.selected?.id === issue.id}

@@ -35,7 +35,7 @@ export default function App() {
       </header>
 
       <main id="main-content">
-        <Steps step={step} />
+        <Steps step={step} onNavigate={setStep} />
 
         {step === 1 && (
           <ScanPage state={state} setState={setState} next={() => setStep(2)} />
@@ -57,7 +57,12 @@ export default function App() {
           />
         )}
         {step === 4 && (
-          <ReviewPage state={state} setState={setState} back={() => setStep(3)} />
+          <ReviewPage
+            state={state}
+            setState={setState}
+            back={() => setStep(3)}
+            reset={() => { setState((v) => ({ repo: v.repo })); setStep(1); }}
+          />
         )}
       </main>
 
