@@ -110,12 +110,13 @@ export default function ComparePage({ state, setState, back, next }) {
 
           {!busy && similar && (
             <div className="reference-list">
-              {similar.similar_issues.map((item) => (
+              {similar.similar_issues.map((item, idx) => (
                 <button
                   type="button"
                   className={`reference${state.reference?.number === item.number ? " selected" : ""}`}
                   onClick={() => setState((v) => ({ ...v, reference: item }))}
                   key={item.number}
+                  style={{ "--i": idx }}
                 >
                   <div className="row-between">
                     <h4>#{item.number} {item.title}</h4>

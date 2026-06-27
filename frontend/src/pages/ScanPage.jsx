@@ -193,8 +193,8 @@ export default function ScanPage({ state, setState, next }) {
             </div>
           ) : (
             <div className="issue-grid" role="list" aria-label="Accessibility issues">
-              {issues.map((issue) => (
-                <div role="listitem" key={issue.id}>
+              {issues.map((issue, idx) => (
+                <div role="listitem" key={issue.id} style={{ "--i": idx }}>
                   <IssueCard
                     issue={issue}
                     selected={state.selected?.id === issue.id}

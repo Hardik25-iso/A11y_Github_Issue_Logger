@@ -79,6 +79,7 @@
 
   /* transition */
   --ease: cubic-bezier(.22,.68,0,1.2);
+  --ease-out: cubic-bezier(.22,1,.36,1);
   --t-fast: 150ms;
   --t-base: 220ms;
 
@@ -133,6 +134,7 @@ a  { color: var(--accent); }
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: var(--r-sm);
+  transition: outline-offset var(--t-fast) var(--ease-out);
 }
 
 /* ─── Base form controls ─────────────────────────────────────────────── */
@@ -689,6 +691,8 @@ button.step:hover:not(:disabled) {
     background var(--t-fast),
     box-shadow var(--t-fast),
     transform var(--t-fast) var(--ease);
+  animation: card-in 380ms var(--ease-out) backwards;
+  animation-delay: calc(40ms * min(var(--i, 0), 8));
 }
 .issue-card:hover:not(:disabled) {
   border-color: var(--border-strong);
@@ -920,6 +924,8 @@ button.step:hover:not(:disabled) {
     border-color var(--t-fast),
     box-shadow var(--t-fast),
     background var(--t-fast);
+  animation: card-in 380ms var(--ease-out) backwards;
+  animation-delay: calc(40ms * min(var(--i, 0), 8));
 }
 .reference:hover:not(:disabled) {
   border-color: var(--accent);
@@ -982,6 +988,19 @@ button.step:hover:not(:disabled) {
   animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Entrance: cards/references rise + fade in (staggered via --i).
+   fill is `backwards` only, so the hover transform is never overridden. */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Step completion: the checkmark pops in when a step is marked done. */
+@keyframes check-pop {
+  from { opacity: 0; transform: scale(.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.step.done .step-check { animation: check-pop var(--t-base) var(--ease-out) backwards; }
 
 /* ─── Empty state ────────────────────────────────────────────────────── */
 .empty-state {
@@ -1128,6 +1147,7 @@ button.step:hover:not(:disabled) {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;
+    animation-delay: -1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
