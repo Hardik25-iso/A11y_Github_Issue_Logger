@@ -854,6 +854,39 @@ button.step:hover:not(:disabled) {
 }
 .panel.sticky { position: sticky; top: 80px; }
 
+/* Collapsible "current finding" panel (Compare) — open by default at every
+   size; lets mobile collapse it to reach the reference list below. */
+.finding > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.finding > summary::-webkit-details-marker { display: none; }
+.finding > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--r-md);
+}
+.finding .panel-eyebrow { margin-bottom: 0; }
+.finding-summary-text { display: grid; gap: 12px; min-width: 0; }
+.finding-title-row { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.finding-title-row h2 { font-size: 1.1rem; }
+.finding-chevron {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--text-muted);
+  transition: transform var(--t-base) var(--ease-out);
+}
+.finding[open] > summary .finding-chevron { transform: rotate(180deg); }
+.finding-body { margin-top: 16px; }
+.finding-impact { font-size: .9rem; color: var(--text-secondary); line-height: 1.55; }
+
+/* Mobile step caption — hidden on desktop, shown in the compact dots row. */
+.steps-caption { display: none; }
+
 .panel-eyebrow {
   font-family: var(--font-mono);
   font-size: .68rem;
@@ -1135,12 +1168,43 @@ button.step:hover:not(:disabled) {
   .header-meta { display: none; }
   .hero        { padding: 40px 0 28px; }
   .hero h1     { font-size: 2.2rem; }
-  .steps       { gap: 2px; }
-  .step        { padding: 8px 10px; font-size: .76rem; }
+
+  /* Compact step indicator: a centered dots row + a "Step N of 4" caption,
+     instead of four cramped labels that overflow the viewport. */
+  .steps {
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    overflow: visible;
+    padding: 14px 0 12px;
+  }
+  .step { padding: 4px; }
+  .step .step-label { display: none; }
+  button.step { min-width: 44px; min-height: 44px; justify-content: center; }
+  .step-num, .step-check { width: 26px; height: 26px; }
+  .steps-caption {
+    display: block;
+    flex-basis: 100%;
+    margin-top: 4px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    font-weight: 500;
+    letter-spacing: .04em;
+    color: var(--text-secondary);
+  }
+
   .repo-bar    { flex-direction: column; align-items: stretch; }
   .repo-bar button { width: 100%; justify-content: center; }
   .results-header { flex-direction: column; align-items: flex-start; }
   .actions     { flex-wrap: wrap; }
+
+  /* Touch targets ≥44px and tap (not hover-only) feedback. */
+  button, select { min-height: 44px; }
+  .editor-field input { min-height: 44px; }
+  .issue-card:active:not(:disabled),
+  .reference:active:not(:disabled) { background: var(--surface-raised); }
 }
 
 /* ─── Motion ─────────────────────────────────────────────────────────── */

@@ -58,28 +58,37 @@ export default function ComparePage({ state, setState, back, next }) {
       {error && <p className="alert error" role="alert">{error}</p>}
 
       <div className="compare">
-        <div className="panel sticky">
-          <p className="panel-eyebrow">Current A11y Issue</p>
-          <Badge tone={state.selected.severity}>{state.selected.severity}</Badge>
-          <h2 style={{ marginTop: 12, fontSize: "1.1rem" }}>{state.selected.title}</h2>
-          <p style={{ marginTop: 8, fontSize: ".9rem", color: "var(--text-secondary)", lineHeight: 1.55 }}>
-            {state.selected.impact}
-          </p>
-          <dl>
-            <dt>WCAG criterion</dt>
-            <dd>{state.selected.wcag_criterion}</dd>
-            <dt>Affected element</dt>
-            <dd><code>{state.selected.element || state.selected.selector}</code></dd>
-            <dt>Occurrences</dt>
-            <dd>{state.selected.occurrences}</dd>
-          </dl>
-          {state.selected.screenshot && (
-            <figure className="element-screenshot">
-              <img src={state.selected.screenshot} alt={`Captured element for: ${state.selected.title}`} />
-              <figcaption>Captured from the live scan · highlighted in red</figcaption>
-            </figure>
-          )}
-        </div>
+        <details className="panel sticky finding" open>
+          <summary className="finding-summary">
+            <span className="finding-summary-text">
+              <span className="panel-eyebrow">Current A11y Issue</span>
+              <span className="finding-title-row">
+                <Badge tone={state.selected.severity}>{state.selected.severity}</Badge>
+                <h2>{state.selected.title}</h2>
+              </span>
+            </span>
+            <svg className="finding-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <div className="finding-body">
+            <p className="finding-impact">{state.selected.impact}</p>
+            <dl>
+              <dt>WCAG criterion</dt>
+              <dd>{state.selected.wcag_criterion}</dd>
+              <dt>Affected element</dt>
+              <dd><code>{state.selected.element || state.selected.selector}</code></dd>
+              <dt>Occurrences</dt>
+              <dd>{state.selected.occurrences}</dd>
+            </dl>
+            {state.selected.screenshot && (
+              <figure className="element-screenshot">
+                <img src={state.selected.screenshot} alt={`Captured element for: ${state.selected.title}`} />
+                <figcaption>Captured from the live scan · highlighted in red</figcaption>
+              </figure>
+            )}
+          </div>
+        </details>
 
         <div className="panel">
           <div className="row-between" style={{ marginBottom: 14, gap: 10, flexWrap: "wrap" }}>

@@ -20,7 +20,7 @@ export default function Steps({ step, onNavigate }) {
           <>
             <span className="step-num" aria-hidden="true">{num}</span>
             <span className="step-check" aria-hidden="true"><CheckIcon /></span>
-            {label}
+            <span className="step-label">{label}</span>
           </>
         );
 
@@ -44,6 +44,9 @@ export default function Steps({ step, onNavigate }) {
           </div>
         );
       })}
+      <span className="steps-caption" aria-hidden="true">
+        Step {step} of {STEP_LABELS.length} · {STEP_LABELS[step - 1]}
+      </span>
     </nav>
   );
 }
