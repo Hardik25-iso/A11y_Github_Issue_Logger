@@ -174,7 +174,7 @@ export default function ScanPage({ state, setState, next }) {
               <h2>Select one issue to find similar GitHub issues</h2>
             </div>
             <label htmlFor="severity-filter">
-              <span className="muted" style={{ fontSize: ".72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em" }}>Filter</span>
+              <span className="muted" style={{ fontSize: ".72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em" }}>Filter</span>
               <select
                 id="severity-filter"
                 value={filter}

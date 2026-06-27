@@ -3,12 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Scan accessibility issues and create actionable GitHub issues." />
-    <title>A11y Issue Logger</title>
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0e1a" />
+
+    <title>A11y Issue Logger — turn WCAG findings into GitHub issues</title>
+    <meta
+      name="description"
+      content="Scan a public URL for WCAG accessibility violations, find duplicate GitHub issues, and draft a reviewable, well-structured issue — with human review before anything is logged."
+    />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="A11y Issue Logger" />
+    <meta
+      property="og:description"
+      content="Turn automated WCAG accessibility findings into well-structured, reviewable GitHub issues."
+    />
+    <meta property="og:url" content="https://a11y-github-issue-logger.vercel.app" />
+
+    <!-- Fonts: preconnect + single non-blocking stylesheet, display=swap -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@700&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
-
