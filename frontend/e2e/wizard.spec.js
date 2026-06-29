@@ -149,7 +149,7 @@ test("continue button is disabled until an issue is selected", async ({ page }) 
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
   const continueBtn = page.getByRole("button", { name: /find similar github issues/i });
   await expect(continueBtn).toBeDisabled();
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await expect(continueBtn).toBeEnabled();
 });
 
@@ -158,7 +158,7 @@ test("continue button is disabled until an issue is selected", async ({ page }) 
 test("navigates to compare step and shows similar issues", async ({ page }) => {
   await page.getByLabel("Page URL to audit").fill("https://example.com");
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await page.getByRole("button", { name: /find similar github issues/i }).click();
   await expect(page.getByRole("heading", { name: /similar github issues/i })).toBeVisible();
   await expect(page.getByText("Images are missing alt text on product pages")).toBeVisible();
@@ -167,7 +167,7 @@ test("navigates to compare step and shows similar issues", async ({ page }) => {
 test("can select a reference issue and proceed", async ({ page }) => {
   await page.getByLabel("Page URL to audit").fill("https://example.com");
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await page.getByRole("button", { name: /find similar github issues/i }).click();
   const generateBtn = page.getByRole("button", { name: /generate github issue/i });
   await expect(generateBtn).toBeDisabled();
@@ -178,7 +178,7 @@ test("can select a reference issue and proceed", async ({ page }) => {
 test("can select create from scratch and proceed", async ({ page }) => {
   await page.getByLabel("Page URL to audit").fill("https://example.com");
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await page.getByRole("button", { name: /find similar github issues/i }).click();
   await page.getByRole("button", { name: /create from scratch/i }).click();
   await expect(page.getByRole("button", { name: /generate github issue/i })).toBeEnabled();
@@ -190,7 +190,7 @@ test("shows generated issue draft", async ({ page }) => {
   // scan
   await page.getByLabel("Page URL to audit").fill("https://example.com");
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await page.getByRole("button", { name: /find similar github issues/i }).click();
   // compare
   await page.getByRole("button", { name: /create from scratch/i }).click();
@@ -206,7 +206,7 @@ test("full wizard: scan → compare → generate → log → success", async ({ 
   // step 1
   await page.getByLabel("Page URL to audit").fill("https://example.com");
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await page.getByRole("button", { name: /find similar github issues/i }).click();
   // step 2
   await page.getByRole("button", { name: /create from scratch/i }).click();
@@ -230,7 +230,7 @@ test("full wizard: scan → compare → generate → log → success", async ({ 
 test("back button from compare returns to scan with selection preserved", async ({ page }) => {
   await page.getByLabel("Page URL to audit").fill("https://example.com");
   await page.getByRole("button", { name: /run accessibility scan/i }).click();
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await page.getByRole("button", { name: /find similar github issues/i }).click();
   await page.getByRole("button", { name: /← back/i }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Scan. Identify.");

@@ -15,7 +15,7 @@ export default function NotFound() {
         </p>
         <div className="hero-actions">
           <Link className="btn-link primary" to="/">Back to home</Link>
-          <Link className="btn-link ghost" to="/app">Launch the app →</Link>
+          <Link className="btn-link ghost" to="/app">Launch app →</Link>
         </div>
       </main>
       <SiteFooter />

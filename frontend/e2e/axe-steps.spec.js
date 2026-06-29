@@ -105,7 +105,7 @@ async function gotoScanResults(page) {
 }
 async function gotoCompare(page) {
   await gotoScanResults(page);
-  await page.getByRole("button", { name: /images must have alternative text/i }).click();
+  await page.getByRole("option", { name: /images must have alternative text/i }).click();
   await page.getByRole("button", { name: /find similar github issues/i }).click();
   await expect(page.getByRole("heading", { name: /similar github issues/i })).toBeVisible();
 }
