@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import IssueCard from "../components/IssueCard";
+import IssueTable from "../components/IssueTable";
 import RecentScans from "../components/RecentScans";
 import { BoltIcon } from "../components/icons";
 import { postJson } from "../services/api";
@@ -165,11 +165,17 @@ export default function ScanPage({ state, setState, next }) {
             )}
           </div>
 
-          <div className="summary" aria-label="Issue summary by severity">
+          <div className="stats" aria-label="Issue summary by severity">
+            <div className="stat total">
+              <span className="stat-tick" aria-hidden="true" />
+              <span className="stat-num">{state.scan.issues.length}</span>
+              <span className="stat-k">Total</span>
+            </div>
             {SEVERITIES.map((s) => (
-              <div className={`summary-pill ${s.toLowerCase()}`} key={s}>
-                <span className="summary-count">{state.scan.summary[s]}</span>
-                <span className="summary-label">{s}</span>
+              <div className={`stat ${s.toLowerCase()}`} key={s}>
+                <span className="stat-tick" aria-hidden="true" />
+                <span className="stat-num">{state.scan.summary[s]}</span>
+                <span className="stat-k">{s}</span>
               </div>
             ))}
           </div>
@@ -198,25 +204,19 @@ export default function ScanPage({ state, setState, next }) {
               <p>No issues match the current filter.</p>
             </div>
           ) : (
-            <div className="issue-grid" role="list" aria-label="Accessibility issues">
-              {issues.map((issue, idx) => (
-                <div role="listitem" key={issue.id} style={{ "--i": idx }}>
-                  <IssueCard
-                    issue={issue}
-                    selected={state.selected?.id === issue.id}
-                    onClick={() =>
-                      setState((v) => ({
-                        ...v,
-                        selected: issue,
-                        similar: null,
-                        reference: null,
-                        generated: null,
-                      }))
-                    }
-                  />
-                </div>
-              ))}
-            </div>
+            <IssueTable
+              issues={issues}
+              selectedId={state.selected?.id}
+              onSelect={(issue) =>
+                setState((v) => ({
+                  ...v,
+                  selected: issue,
+                  similar: null,
+                  reference: null,
+                  generated: null,
+                }))
+              }
+            />
           )}
 
           <div className="actions">

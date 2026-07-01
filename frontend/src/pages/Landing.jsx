@@ -65,7 +65,7 @@ const FAQS = [
   },
   {
     q: "What does it cost?",
-    a: "The tool itself is free and open source. If you wire in a paid AI provider you pay that provider directly; the built-in template fallback costs nothing.",
+    a: "It's free to run with your own GitHub token, and open source. AI drafting is optional — wire in a provider and you pay that provider directly, or use the built-in template mode, which costs nothing. The public demo is best-effort, not a guaranteed hosted service.",
   },
 ];
 
@@ -90,11 +90,11 @@ export default function Landing() {
               anything is logged.
             </p>
             <div className="hero-actions">
-              <Link className="btn-link primary" to="/app">Scan a page — free</Link>
+              <Link className="btn-link primary" to="/app">Launch app →</Link>
               <a className="btn-link ghost" href="#how">See how it works</a>
             </div>
             <p className="hero-trust muted">
-              No signup. Your GitHub token, your repos — nothing is stored.
+              Free with your own GitHub token · no signup · nothing stored.
             </p>
           </div>
 
@@ -203,7 +203,7 @@ export default function Landing() {
           <h2 className="landing-h2">Audit a page in about a minute.</h2>
           <p className="muted">No account, no install. Bring a URL.</p>
           <div className="hero-actions" style={{ justifyContent: "center" }}>
-            <Link className="btn-link primary" to="/app">Launch the app →</Link>
+            <Link className="btn-link primary" to="/app">Launch app →</Link>
             <a className="btn-link ghost" href={REPO_URL} target="_blank" rel="noreferrer">View source</a>
           </div>
         </section>
