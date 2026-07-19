@@ -211,23 +211,25 @@ async def _guarded_route(route: Any) -> None:
     await route.continue_()
 
 
-async def _run_axe(url: str, axe_path: Path, storage_state: dict | None = None) -> tuple[list[dict], str]:
-    """Run axe-core against url, reusing the warm shared browser. Returns the
-    violations and the final URL (post-redirect) so callers can detect a
-    login-wall redirect."""
+async def _acquire_browser() -> tuple[Any, bool]:
+    """Return (browser, own_browser). Reuses the warm shared browser when the
+    pool is initialised, otherwise launches a fresh one the caller must close."""
     global _browser
-    settings = get_settings()
-
-    # Fall back to launching a fresh browser if the pool isn't initialised
     if _browser is None or not _browser.is_connected():
         import importlib
         _pw = importlib.import_module(_PW_MOD)
         pw = await _pw.async_playwright().start()
         browser = await pw.chromium.launch()
-        own_browser = True
-    else:
-        browser = _browser
-        own_browser = False
+        return browser, True
+    return _browser, False
+
+
+async def _run_axe(url: str, axe_path: Path, storage_state: dict | None = None) -> tuple[list[dict], str]:
+    """Run axe-core against url, reusing the warm shared browser. Returns the
+    violations and the final URL (post-redirect) so callers can detect a
+    login-wall redirect."""
+    settings = get_settings()
+    browser, own_browser = await _acquire_browser()
 
     try:
         # storage_state injects the caller's session (cookies/localStorage) for

@@ -16,7 +16,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from backend.app.core.config import get_settings
 from backend.app.core.limiter import limiter
 from backend.app.core.logging import RequestIDMiddleware
-from backend.app.routers import generation, github, scan, system
+from backend.app.routers import auth, generation, github, scan, system
 from backend.app.services.scanner import close_browser_pool, init_browser_pool
 
 load_dotenv()
@@ -45,5 +45,6 @@ app.add_middleware(
 app.add_middleware(RequestIDMiddleware)
 app.include_router(system.router)
 app.include_router(scan.router)
+app.include_router(auth.router)
 app.include_router(github.router)
 app.include_router(generation.router)

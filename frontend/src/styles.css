@@ -515,6 +515,87 @@ button.step:hover:not(:disabled) {
   font-size: .78rem;
   resize: vertical;
 }
+.auth-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.auth-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.login-fields { margin-top: 12px; }
+.login-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.login-grid label,
+.auth-advanced > label {
+  display: block;
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 6px;
+}
+.login-grid input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: .88rem;
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.auth-advanced summary {
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.auth-advanced summary:hover { color: var(--accent); }
+/* Post-login proof: the screenshot honestly evidencing the captured session */
+.login-proof {
+  margin-top: var(--s-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.login-proof-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.login-proof-head h2 {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: var(--text-primary);
+}
+.login-proof-shot {
+  display: block;
+  max-width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  object-position: top;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
 
 /* ─── Results header ─────────────────────────────────────────────────── */
 .results-header {
