@@ -66,6 +66,43 @@ class ScanResponse(BaseModel):
     notice: str | None = None
 
 
+class LoginSelectors(BaseModel):
+    """Optional CSS selector overrides for when auto-detection of the login
+    form fields fails."""
+
+    username: str | None = Field(default=None, max_length=200)
+    password: str | None = Field(default=None, max_length=200)
+    submit: str | None = Field(default=None, max_length=200)
+
+
+class LoginRequest(BaseModel):
+    login_url: HttpUrl
+    # Credentials are used once to perform the login, then discarded. They are
+    # never persisted, logged, or echoed back in any response.
+    username: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+    selectors: LoginSelectors | None = None
+
+    @field_validator("login_url")
+    @classmethod
+    def require_public_url(cls, value: HttpUrl) -> HttpUrl:
+        validate_public_url(str(value))
+        return value
+
+
+class LoginResponse(BaseModel):
+    success: bool
+    # Playwright storage state (cookies + localStorage) of the authenticated
+    # session — the only thing that survives the login request.
+    storage_state: dict | None = None
+    # Full-page PNG data URI of the post-login page: visible proof that the
+    # login actually worked. None when success is False.
+    screenshot: str | None = None
+    final_url: str = ""
+    source: Literal["live", "fallback"]
+    notice: str | None = None
+
+
 class SearchRequest(BaseModel):
     issue: ScanIssue
     repo: str | None = None
