@@ -89,6 +89,17 @@ function mockApi(page) {
 }
 
 async function expectNoSeriousViolations(page) {
+  // Entry animations (e.g. the staggered card-in fade) briefly render text at
+  // reduced opacity; wait for finite animations to finish so axe measures the
+  // settled colors instead of a mid-fade frame.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming?.().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => {})),
+    ),
+  );
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
