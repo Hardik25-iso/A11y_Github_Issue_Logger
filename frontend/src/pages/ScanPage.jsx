@@ -17,6 +17,14 @@ const EXAMPLE_URLS = [
 export default function ScanPage({ state, setState, next }) {
   const [url, setUrl] = useState(state.url || "");
   const [authState, setAuthState] = useState("");
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const [loginUrl, setLoginUrl] = useState("");
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [selUser, setSelUser] = useState("");
+  const [selPass, setSelPass] = useState("");
+  const [selSubmit, setSelSubmit] = useState("");
+  const [loginProof, setLoginProof] = useState(null);
   const [filter, setFilter] = useState("All");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +35,9 @@ export default function ScanPage({ state, setState, next }) {
   );
 
   const liveMessage = busy
-    ? "Running accessibility scan…"
+    ? needsLogin
+      ? "Signing in, then running the accessibility scan…"
+      : "Running accessibility scan…"
     : state.scan
       ? `${issues.length} ${issues.length === 1 ? "issue" : "issues"} ${filter === "All" ? "found" : `match the ${filter} filter`}.`
       : "";
@@ -46,10 +56,32 @@ export default function ScanPage({ state, setState, next }) {
         return;
       }
     }
+    let proof = null;
     try {
+      if (needsLogin && !storageState) {
+        const selectors = {};
+        if (selUser.trim()) selectors.username = selUser.trim();
+        if (selPass.trim()) selectors.password = selPass.trim();
+        if (selSubmit.trim()) selectors.submit = selSubmit.trim();
+        const login = await postJson("/api/login", {
+          login_url: loginUrl,
+          username: loginUser,
+          password: loginPass,
+          ...(Object.keys(selectors).length ? { selectors } : {}),
+        });
+        if (!login.success) {
+          setError(login.notice || "Login failed — the page still shows a login form.");
+          return;
+        }
+        // Credentials are done with: keep only the session + the proof shot.
+        setLoginPass("");
+        storageState = login.storage_state;
+        proof = { screenshot: login.screenshot, finalUrl: login.final_url, notice: login.notice };
+      }
       const body = { url };
       if (storageState) body.storage_state = storageState;
       const result = await postJson("/api/scan", body);
+      setLoginProof(proof);
       setState((v) => ({ ...v, url, scan: result, selected: null, similar: null, reference: null, generated: null }));
       recordScan({ url, source: result.source, total: result.issues?.length ?? 0 });
     } catch (err) {
@@ -112,21 +144,119 @@ export default function ScanPage({ state, setState, next }) {
           ))}
         </div>
 
-        <details className="auth-scan">
-          <summary>Scan a page behind a login (advanced)</summary>
-          <p className="auth-scan-help">
-            Paste a Playwright <code>storageState</code> JSON (cookies + localStorage) to scan an
-            authenticated page. It is used only for this scan and never stored or logged. Note: some
-            providers (e.g. Google) block automated browsers even with a valid session.
-          </p>
-          <textarea
-            value={authState}
-            onChange={(e) => setAuthState(e.target.value)}
-            placeholder='{"cookies": [...], "origins": [...]}'
-            aria-label="Session storage state JSON for authenticated scanning"
-            spellCheck="false"
-          />
-        </details>
+        <div className="auth-scan">
+          <label className="auth-toggle">
+            <input
+              type="checkbox"
+              checked={needsLogin}
+              onChange={(e) => {
+                setNeedsLogin(e.target.checked);
+                if (!e.target.checked) setLoginProof(null);
+              }}
+            />
+            This page needs a login
+          </label>
+
+          {needsLogin && (
+            <div className="login-fields">
+              <p className="auth-scan-help">
+                The tool opens the login page in its own browser, signs in with these details, then
+                scans the page you asked for as the logged-in user. Credentials are used once to log
+                in and are never stored, logged, or included in any response — only the session
+                cookies are kept for the scan. <strong>Limitations:</strong> only simple
+                username/password forms are supported. SSO (Google/GitHub), 2FA/MFA, and
+                CAPTCHA-protected logins are not.
+              </p>
+              <div className="login-grid">
+                <div>
+                  <label htmlFor="login-url">Login page URL</label>
+                  <input
+                    id="login-url"
+                    type="url"
+                    value={loginUrl}
+                    onChange={(e) => setLoginUrl(e.target.value)}
+                    placeholder="https://example.com/login"
+                    required={needsLogin && !authState.trim()}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="login-username">Username or email</label>
+                  <input
+                    id="login-username"
+                    type="text"
+                    value={loginUser}
+                    onChange={(e) => setLoginUser(e.target.value)}
+                    autoComplete="username"
+                    required={needsLogin && !authState.trim()}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="login-password">Password</label>
+                  <input
+                    id="login-password"
+                    type="password"
+                    value={loginPass}
+                    onChange={(e) => setLoginPass(e.target.value)}
+                    autoComplete="current-password"
+                    required={needsLogin && !authState.trim()}
+                  />
+                </div>
+              </div>
+
+              <details className="auth-advanced">
+                <summary>Advanced: custom selectors or session state</summary>
+                <p className="auth-scan-help">
+                  If field auto-detection fails on an unusual login form, provide the CSS selectors
+                  for its fields. Alternatively, paste a Playwright <code>storageState</code> JSON to
+                  skip the login step entirely.
+                </p>
+                <div className="login-grid">
+                  <div>
+                    <label htmlFor="sel-username">Username field selector</label>
+                    <input
+                      id="sel-username"
+                      type="text"
+                      value={selUser}
+                      onChange={(e) => setSelUser(e.target.value)}
+                      placeholder="input[name=email]"
+                      spellCheck="false"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="sel-password">Password field selector</label>
+                    <input
+                      id="sel-password"
+                      type="text"
+                      value={selPass}
+                      onChange={(e) => setSelPass(e.target.value)}
+                      placeholder="input[type=password]"
+                      spellCheck="false"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="sel-submit">Submit button selector</label>
+                    <input
+                      id="sel-submit"
+                      type="text"
+                      value={selSubmit}
+                      onChange={(e) => setSelSubmit(e.target.value)}
+                      placeholder="button[type=submit]"
+                      spellCheck="false"
+                    />
+                  </div>
+                </div>
+                <label htmlFor="storage-state">Session storage state JSON (optional)</label>
+                <textarea
+                  id="storage-state"
+                  value={authState}
+                  onChange={(e) => setAuthState(e.target.value)}
+                  placeholder='{"cookies": [...], "origins": [...]}'
+                  spellCheck="false"
+                />
+              </details>
+            </div>
+          )}
+        </div>
       </form>
 
       {!state.scan && !busy && <RecentScans onPick={setUrl} />}
@@ -138,13 +268,37 @@ export default function ScanPage({ state, setState, next }) {
       {busy && (
         <div className="loading-screen" style={{ minHeight: "32vh" }}>
           <div className="spinner" aria-hidden="true" />
-          <h1>Running accessibility scan…</h1>
-          <p>Loading the page in a headless browser and running the axe-core audit. This can take a few seconds.</p>
+          <h1>{needsLogin ? "Signing in, then scanning…" : "Running accessibility scan…"}</h1>
+          <p>
+            {needsLogin
+              ? "Logging in to the page in a headless browser, then running the axe-core audit on the authenticated page. This can take a little longer."
+              : "Loading the page in a headless browser and running the axe-core audit. This can take a few seconds."}
+          </p>
         </div>
       )}
 
       {!busy && state.scan && (
         <>
+          {loginProof && (
+            <section className="login-proof" aria-labelledby="login-proof-title">
+              <div className="login-proof-head">
+                <h2 id="login-proof-title">Login verified</h2>
+                <span className="source-badge live" aria-label="Scanned with an authenticated session">
+                  Authenticated session
+                </span>
+              </div>
+              <p className="result-url">Signed-in page: {loginProof.finalUrl}</p>
+              {loginProof.notice && (
+                <div className="alert" role="status">{loginProof.notice}</div>
+              )}
+              <img
+                className="login-proof-shot"
+                src={loginProof.screenshot}
+                alt={`Full-page screenshot of ${loginProof.finalUrl} captured after logging in, as proof the login succeeded`}
+              />
+            </section>
+          )}
+
           {state.scan.notice && (
             <div className="alert" role="status">{state.scan.notice}</div>
           )}
