@@ -59,10 +59,18 @@ class FakePage:
     """Simulates a login page. After submit, the page 'navigates' to post_url
     and, if login_succeeds, the password field disappears."""
 
-    def __init__(self, login_url, post_url, login_succeeds=True, has_password_field=True):
+    def __init__(
+        self,
+        login_url,
+        post_url,
+        login_succeeds=True,
+        has_password_field=True,
+        password_hidden_after_submit=False,
+    ):
         self.url = login_url
         self.post_url = post_url
         self.login_succeeds = login_succeeds
+        self.password_hidden_after_submit = password_hidden_after_submit
         self.username_locator = FakeLocator()
         self.password_locator = FakeLocator(present=has_password_field)
         self.submit_locator = FakeLocator()
@@ -77,6 +85,10 @@ class FakePage:
     def locator(self, selector):
         if "password" in selector:
             if self.submitted and self.login_succeeds:
+                if self.password_hidden_after_submit:
+                    # Simulates a signed-in page that still keeps a login form
+                    # in the DOM (e.g. a nav dropdown) but not visible.
+                    return FakeLocator(present=True, visible=False)
                 return FakeLocator(present=False)
             return self.password_locator
         if "submit" in selector or selector == "form button":
@@ -156,6 +168,19 @@ def test_login_failure_when_login_wall_remains(monkeypatch):
     assert result.storage_state is None
     assert result.screenshot is None
     assert "still shows a login form" in result.notice
+
+
+def test_login_success_when_password_field_remains_in_dom_but_hidden(monkeypatch):
+    # Many signed-in pages keep a login form in the DOM (nav dropdown, collapsed
+    # modal) without displaying it. Presence alone must not be read as failure.
+    page = FakePage(
+        "https://app.example.com/login",
+        "https://app.example.com/dashboard",
+        password_hidden_after_submit=True,
+    )
+    result, _ = _login(page, monkeypatch)
+    assert result.success is True
+    assert result.storage_state is not None
 
 
 def test_login_failure_when_no_password_field_found(monkeypatch):
