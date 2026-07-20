@@ -175,8 +175,11 @@ async def _perform_login(
     validate_resolved_public_url(final_url)
 
     # Honest verification: if a password field is still visible, we are still
-    # on a login wall — never report that as a successful login.
-    if await page.locator(PASSWORD_SELECTOR).count():
+    # on a login wall — never report that as a successful login. Checking
+    # visibility (not just presence) matters because many signed-in pages
+    # still keep a login form in the DOM (nav dropdown, collapsed modal),
+    # which would otherwise read as a false "login failed".
+    if await _first_visible(page, (password_selector,)) is not None:
         log_info(f"Login rejected by target site for url={login_url}")
         return _failure(
             "The page still shows a login form after submitting, so the login did not "

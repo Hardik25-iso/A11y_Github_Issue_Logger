@@ -9,7 +9,7 @@ const SEVERITIES = ["Critical", "High", "Medium", "Low"];
 
 const EXAMPLE_URLS = [
   { label: "bbc.co.uk",       url: "https://www.bbc.co.uk" },
-  { label: "w3.org",          url: "https://www.w3.org" },
+  { label: "python.org",      url: "https://www.python.org" },
   { label: "wikipedia.org",   url: "https://en.wikipedia.org" },
   { label: "example.com",     url: "https://example.com" },
 ];
