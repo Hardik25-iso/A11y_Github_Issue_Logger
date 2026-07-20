@@ -145,8 +145,9 @@ export default function ScanPage({ state, setState, next }) {
         </div>
 
         <div className="auth-scan">
-          <label className="auth-toggle">
+          <label className="auth-toggle" htmlFor="needs-login">
             <input
+              id="needs-login"
               type="checkbox"
               checked={needsLogin}
               onChange={(e) => {
