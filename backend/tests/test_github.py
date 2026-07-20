@@ -100,10 +100,45 @@ def test_search_issues_normalizes_and_scores_results(monkeypatch):
     )
     results, summary, source = asyncio.run(github.search_issues(scan_issue(), "owner/repo"))
     assert source == "github"
-    assert "ranked by" in summary
+    # AI ranking isn't mocked here (falls back to keyword scoring) — the
+    # summary must not claim an AI ranking that didn't actually happen.
+    assert "ranked by AI relevance" not in summary
     assert results[0].number == 7
     assert results[0].similarity_score > 5
     assert "WCAG" in results[0].similarity_explanation
+
+
+def test_search_issues_reports_ai_ranking_only_when_ai_actually_ran(monkeypatch):
+    patch_client(
+        monkeypatch,
+        FakeResponse(
+            payload={
+                "items": [
+                    {
+                        "number": 7,
+                        "title": "Search button accessibility name missing",
+                        "state": "open",
+                        "labels": [{"name": "accessibility"}],
+                        "assignee": {"login": "hardik"},
+                        "created_at": "2026-06-01T12:00:00Z",
+                        "body": "WCAG 4.1.2 button-name failure in header.",
+                        "html_url": "https://github.com/owner/repo/issues/7",
+                    }
+                ]
+            }
+        ),
+    )
+
+    async def fake_generate_json(system, prompt):
+        return {"ranked": [{"number": 7, "score": 9.1, "explanation": "AI: strong match"}]}, "groq"
+
+    from backend.app.services import ai_client
+    monkeypatch.setattr(ai_client, "generate_json", fake_generate_json)
+
+    results, summary, source = asyncio.run(github.search_issues(scan_issue(), "owner/repo"))
+    assert source == "github"
+    assert "ranked by AI relevance" in summary
+    assert results[0].similarity_explanation == "AI: strong match"
 
 
 def test_search_issues_translates_rate_limit_to_fallback(monkeypatch):

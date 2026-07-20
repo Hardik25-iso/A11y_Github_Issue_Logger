@@ -164,8 +164,10 @@ def fallback_results(issue: ScanIssue) -> list[SimilarIssue]:
     ]
 
 
-async def _ai_rank(issue: ScanIssue, results: list[SimilarIssue]) -> list[SimilarIssue]:
-    """Re-score results using AI; returns unchanged list if AI is unavailable."""
+async def _ai_rank(issue: ScanIssue, results: list[SimilarIssue]) -> tuple[list[SimilarIssue], bool]:
+    """Re-score results using AI. Returns (results, ai_used) — ai_used is False
+    whenever AI ranking didn't actually happen, so callers can avoid claiming
+    an AI-ranked result when the scores are really the keyword fallback."""
     from backend.app.prompts.similarity_ranking import SYSTEM_PROMPT, similarity_ranking_prompt
     from backend.app.services.ai_client import generate_json
 
@@ -184,10 +186,10 @@ async def _ai_rank(issue: ScanIssue, results: list[SimilarIssue]) -> list[Simila
             }) if r.number in score_map else r
             for r in results
         ]
-        return sorted(rescored, key=lambda x: x.similarity_score, reverse=True)
+        return sorted(rescored, key=lambda x: x.similarity_score, reverse=True), True
     except Exception as exc:
         log_warning(f"AI similarity ranking skipped: {type(exc).__name__}: {exc}")
-        return results
+        return results, False
 
 
 async def search_issues(issue: ScanIssue, repo: str, token: str | None = None) -> tuple[list[SimilarIssue], str, str]:
@@ -204,8 +206,9 @@ async def search_issues(issue: ScanIssue, repo: str, token: str | None = None) -
         results = [r for r in normalized if r is not None]
         if not results:
             return [], f"No similar issues were found in {repo}.", "github"
-        results = await _ai_rank(issue, results)
-        return results, f"Found {len(results)} related issues in {repo}, ranked by AI relevance.", "github"
+        results, ai_used = await _ai_rank(issue, results)
+        ranking_note = ", ranked by AI relevance" if ai_used else ""
+        return results, f"Found {len(results)} related issues in {repo}{ranking_note}.", "github"
     except httpx.HTTPError:
         return fallback_results(issue), "GitHub search was unavailable; demo matches are shown.", "fallback"
 
