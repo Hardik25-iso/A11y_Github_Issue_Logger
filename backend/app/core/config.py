@@ -41,7 +41,7 @@ class Settings:
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
             anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
             groq_api_key=os.getenv("GROQ_API_KEY", ""),
-            groq_model=os.getenv("GROQ_MODEL", "gemma2-9b-it"),
+            groq_model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
             github_token=os.getenv("GITHUB_TOKEN", ""),
             github_repo_owner=os.getenv("GITHUB_REPO_OWNER", ""),
             github_repo_name=os.getenv("GITHUB_REPO_NAME", ""),
