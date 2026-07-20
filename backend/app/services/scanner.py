@@ -41,6 +41,14 @@ LOGIN_INDICATORS = ("login", "signin", "sign-in", "/auth", "sso", "oauth", "acco
 
 _PW_MOD = "playwright.async_api"
 
+# Required to launch Chromium reliably as root in a Docker container:
+# --no-sandbox lifts the setuid-sandbox restriction (the container has no
+# non-root user set up for it), and --disable-dev-shm-usage avoids crashes
+# from Docker's default 64MB /dev/shm being exhausted during real page
+# rendering (a bare launch()+close() with no page never hits this, which is
+# why a naive browser-launch health check can pass while real scans fail).
+CHROMIUM_LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"]
+
 
 async def init_browser_pool() -> None:
     global _pw_instance, _browser
@@ -50,7 +58,7 @@ async def init_browser_pool() -> None:
         import importlib
         _pw = importlib.import_module(_PW_MOD)
         _pw_instance = await _pw.async_playwright().start()
-        _browser = await _pw_instance.chromium.launch()
+        _browser = await _pw_instance.chromium.launch(args=CHROMIUM_LAUNCH_ARGS)
         log_info("Browser pool initialised")
     except Exception as exc:
         log_error(f"Browser pool init failed: {exc}", exc=exc)
@@ -219,7 +227,7 @@ async def _acquire_browser() -> tuple[Any, bool]:
         import importlib
         _pw = importlib.import_module(_PW_MOD)
         pw = await _pw.async_playwright().start()
-        browser = await pw.chromium.launch()
+        browser = await pw.chromium.launch(args=CHROMIUM_LAUNCH_ARGS)
         return browser, True
     return _browser, False
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from backend.app.core.config import get_settings
-from backend.app.services.scanner import _PW_MOD, axe_script_path
+from backend.app.services.scanner import CHROMIUM_LAUNCH_ARGS, _PW_MOD, axe_script_path
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ async def health() -> dict:
             import importlib
             _pw = importlib.import_module(_PW_MOD)
             async with _pw.async_playwright() as p:
-                browser = await p.chromium.launch()
+                browser = await p.chromium.launch(args=CHROMIUM_LAUNCH_ARGS)
                 await browser.close()
             checks["browser"] = "ok"
         except Exception as exc:
