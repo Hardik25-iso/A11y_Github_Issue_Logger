@@ -59,6 +59,10 @@ export default function ScanPage({ state, setState, next }) {
     let proof = null;
     try {
       if (needsLogin && !storageState) {
+        // Opens a real tab to the login page so you can watch it load — a
+        // visual convenience only. The actual login is performed separately
+        // by the tool's own managed browser (see the proof screenshot below).
+        window.open(loginUrl, "_blank", "noopener,noreferrer");
         const selectors = {};
         if (selUser.trim()) selectors.username = selUser.trim();
         if (selPass.trim()) selectors.password = selPass.trim();
@@ -161,11 +165,12 @@ export default function ScanPage({ state, setState, next }) {
           {needsLogin && (
             <div className="login-fields">
               <p className="auth-scan-help">
-                The tool opens the login page in its own browser, signs in with these details, then
-                scans the page you asked for as the logged-in user. Credentials are used once to log
-                in and are never stored, logged, or included in any response — only the session
-                cookies are kept for the scan. <strong>Limitations:</strong> only simple
-                username/password forms are supported. SSO (Google/GitHub), 2FA/MFA, and
+                On submit, the login page opens in a new tab so you can watch it — that tab is just
+                for you to see; the actual sign-in is performed separately by the tool's own managed
+                browser, which then scans the page you asked for as the logged-in user. Credentials
+                are used once to log in and are never stored, logged, or included in any response —
+                only the session cookies are kept for the scan. <strong>Limitations:</strong> only
+                simple username/password forms are supported. SSO (Google/GitHub), 2FA/MFA, and
                 CAPTCHA-protected logins are not.
               </p>
               <div className="login-grid">

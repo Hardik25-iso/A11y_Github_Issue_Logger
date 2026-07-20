@@ -43,6 +43,7 @@ async function fillLoginForm(user) {
 describe("ScanPage authenticated scanning", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
   it("hides login fields until the toggle is checked", async () => {
@@ -83,6 +84,12 @@ describe("ScanPage authenticated scanning", () => {
     const { rerender } = render(<ScanPage state={{}} setState={setState} next={() => {}} />);
     await fillLoginForm(user);
     await user.click(screen.getByRole("button", { name: /run accessibility scan/i }));
+
+    expect(window.open).toHaveBeenCalledWith(
+      "https://app.example.com/login",
+      "_blank",
+      "noopener,noreferrer",
+    );
 
     await waitFor(() => expect(postJson).toHaveBeenCalledTimes(2));
     expect(postJson).toHaveBeenNthCalledWith(1, "/api/login", {
@@ -131,5 +138,6 @@ describe("ScanPage authenticated scanning", () => {
 
     await waitFor(() => expect(postJson).toHaveBeenCalledTimes(1));
     expect(postJson).toHaveBeenCalledWith("/api/scan", { url: "https://example.com" });
+    expect(window.open).not.toHaveBeenCalled();
   });
 });
