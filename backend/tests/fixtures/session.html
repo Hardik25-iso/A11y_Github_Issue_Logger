@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Session Fixture</title>
+</head>
+<body>
+  <main>
+    <h1>Account</h1>
+    <p>Signed-out view.</p>
+  </main>
+  <script>
+    // Only a request carrying the injected session cookie renders the
+    // unnamed button, so a button-name violation proves storage_state
+    // reached the browser that ran the scan.
+    if (document.cookie.split("; ").includes("a11y_session=1")) {
+      const button = document.createElement("button");
+      button.id = "signed-in-only";
+      document.querySelector("main").appendChild(button);
+    }
+  </script>
+</body>
+</html>
