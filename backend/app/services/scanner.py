@@ -11,6 +11,8 @@ from backend.app.models import ScanIssue, ScanResponse
 # Cap how many element screenshots we capture per scan to bound response size
 # and scan time. The most severe violations come first after normalization.
 MAX_SCREENSHOTS = 10
+# Hard ceiling per element screenshot, whatever Playwright's own timeouts do.
+SCREENSHOT_CAP_SECONDS = 5
 
 # Max concurrent live browser scans — prevents resource exhaustion
 _SCAN_SEMAPHORE = asyncio.Semaphore(3)
@@ -190,16 +192,24 @@ async def _capture_element_screenshot(page: Any, selector: str) -> str | None:
     if not selector:
         return None
     try:
-        locator = page.locator(selector).first
-        await locator.scroll_into_view_if_needed(timeout=2000)
-        # Inset box-shadow stays within the element's box, so it is always
-        # included in the element screenshot (unlike outline, which can clip).
-        await locator.evaluate("el => { el.style.boxShadow = 'inset 0 0 0 3px #ff3b3b'; }")
-        png_bytes = await locator.screenshot(timeout=3000)
-        return "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+        return await asyncio.wait_for(_highlighted_png(page, selector), SCREENSHOT_CAP_SECONDS)
     except Exception as exc:
         log_warning(f"Screenshot capture skipped for selector {selector!r}: {type(exc).__name__}")
         return None
+
+
+async def _highlighted_png(page: Any, selector: str) -> str | None:
+    locator = page.locator(selector).first
+    # An invisible element has nothing to show, and locator.screenshot() on
+    # one ignores its own timeout and blocks for Playwright's 30 s default.
+    if not await locator.is_visible():
+        return None
+    await locator.scroll_into_view_if_needed(timeout=2000)
+    # Inset box-shadow stays within the element's box, so it is always
+    # included in the element screenshot (unlike outline, which can clip).
+    await locator.evaluate("el => { el.style.boxShadow = 'inset 0 0 0 3px #ff3b3b'; }")
+    png_bytes = await locator.screenshot(timeout=3000)
+    return "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
 
 
 def axe_script_path() -> Path:
