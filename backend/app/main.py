@@ -17,7 +17,7 @@ from backend.app.core.config import get_settings
 from backend.app.core.limiter import limiter
 from backend.app.core.logging import RequestIDMiddleware
 from backend.app.routers import auth, generation, github, scan, system
-from backend.app.services.scanner import close_browser_pool, init_browser_pool
+from backend.app.services.browser import close_browser_pool, init_browser_pool
 
 load_dotenv()
 settings = get_settings()

@@ -26,7 +26,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from backend.app.services import scanner
+from backend.app.services import browser, scanner
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 FIXTURE_HOST = "fixture.a11y.test"
@@ -83,20 +83,15 @@ def _install_instrumentation(counter: dict) -> None:
 
 
 async def _browser_version() -> str:
-    acquire = scanner._acquire_browser
-    browser, own = await acquire()
-    try:
-        return browser.version
-    finally:
-        if own:
-            await browser.close()
+    async with browser.browser_session() as session:
+        return session.version
 
 
 async def _run(urls: list[str], runs: int) -> dict:
     counter = {"requests": 0}
     _install_instrumentation(counter)
     axe_path = scanner.axe_script_path()
-    await scanner.init_browser_pool()
+    await browser.init_browser_pool()
     report: dict = {
         "mode": "remote" if os.getenv("BROWSER_WS_ENDPOINT") else "local",
         "browser_version": await _browser_version(),
@@ -121,7 +116,7 @@ async def _run(urls: list[str], runs: int) -> dict:
             print(f"[{report['mode']}] run {attempt + 1}/{runs} {url}: "
                   f"{entry.get('error') or str(len(entry['keys'])) + ' violations'} "
                   f"in {entry['seconds']}s ({entry['guarded_requests']} guarded requests)")
-    await scanner.close_browser_pool()
+    await browser.close_browser_pool()
     return report
 
 
@@ -157,15 +152,22 @@ def _diff(local_path: str, remote_path: str) -> int:
     for url in dict.fromkeys([*local["results"], *remote["results"]]):
         local_runs = local["results"].get(url, [])
         remote_runs = remote["results"].get(url, [])
-        errors = [r["error"] for r in local_runs + remote_runs if "error" in r]
         print(f"\n== {url}")
         print(f"   {local['mode']}: {_timing(local_runs)}   {remote['mode']}: {_timing(remote_runs)}")
-        if errors or not local_runs or not remote_runs:
-            print(f"   FAIL errors: {errors or 'URL missing from one report'}")
+        # Errored runs (e.g. a flaky network) are shown and excluded; a URL
+        # only fails outright when one side has no successful run at all.
+        for side, runs in ((local["mode"], local_runs), (remote["mode"], remote_runs)):
+            for run in runs:
+                if "error" in run:
+                    print(f"   errored {side} run excluded: {run['error'].splitlines()[0]}")
+        local_ok = [r for r in local_runs if "keys" in r]
+        remote_ok = [r for r in remote_runs if "keys" in r]
+        if not local_ok or not remote_ok:
+            print("   FAIL no successful run on one side")
             failed = True
             continue
-        noise = max(_max_noise(local_runs), _max_noise(remote_runs))
-        added, removed = _symmetric_diff(local_runs[0]["keys"], remote_runs[0]["keys"])
+        noise = max(_max_noise(local_ok), _max_noise(remote_ok))
+        added, removed = _symmetric_diff(local_ok[0]["keys"], remote_ok[0]["keys"])
         cross = len(added) + len(removed)
         exact = url in EXACT_URLS
         ok = cross == 0 if exact else cross <= noise

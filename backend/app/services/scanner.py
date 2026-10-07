@@ -1,12 +1,14 @@
 import asyncio
 import base64
+import os
 from pathlib import Path
 from typing import Any
 
 from backend.app.core.config import get_settings
-from backend.app.core.logging import log_error, log_info, log_warning
+from backend.app.core.logging import log_error, log_warning
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import ScanIssue, ScanResponse
+from backend.app.services.browser import BrowserUnavailable, browser_session, remote_mode
 
 # Cap how many element screenshots we capture per scan to bound response size
 # and scan time. The most severe violations come first after normalization.
@@ -14,12 +16,23 @@ MAX_SCREENSHOTS = 10
 # Hard ceiling per element screenshot, whatever Playwright's own timeouts do.
 SCREENSHOT_CAP_SECONDS = 5
 
-# Max concurrent live browser scans — prevents resource exhaustion
-_SCAN_SEMAPHORE = asyncio.Semaphore(3)
+# Max concurrent live browser scans — prevents resource exhaustion. Read
+# straight from the environment because it is fixed at import time; set it to
+# the hosted browser plan's concurrency (1 on the Browserless free tier).
+_SCAN_SEMAPHORE = asyncio.Semaphore(int(os.getenv("BROWSER_MAX_CONCURRENCY", "3")))
 
-# Warm browser shared across requests — contexts are isolated per scan
-_pw_instance: Any = None
-_browser: Any = None
+# A remote scan that hit a disconnect is retried only if this much of the
+# total budget remains; the retry opens a new, separately billed connection.
+RETRY_MIN_SECONDS = 15
+
+# Honest, specific reasons for each way the remote browser can be unavailable.
+BROWSER_NOTICES = {
+    "quota": "The free live-scan quota is used up; try again later.",
+    "auth": "Live scanning is misconfigured on the server.",
+    "connect": "The remote browser could not be reached.",
+    "disconnected": "The remote browser disconnected during the scan.",
+    "timeout": "The live scan took too long.",
+}
 
 SEVERITY_MAP = {
     "critical": "Critical",
@@ -40,42 +53,6 @@ BLOCKED_RESOURCE_TYPES = {"font", "image", "media"}
 # Substrings that suggest a scan was redirected to a login/auth wall, so we can
 # warn that results may reflect the login screen rather than the intended page.
 LOGIN_INDICATORS = ("login", "signin", "sign-in", "/auth", "sso", "oauth", "accounts.")
-
-_PW_MOD = "playwright.async_api"
-
-# Required to launch Chromium reliably as root in a Docker container:
-# --no-sandbox lifts the setuid-sandbox restriction (the container has no
-# non-root user set up for it), and --disable-dev-shm-usage avoids crashes
-# from Docker's default 64MB /dev/shm being exhausted during real page
-# rendering (a bare launch()+close() with no page never hits this, which is
-# why a naive browser-launch health check can pass while real scans fail).
-CHROMIUM_LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"]
-
-
-async def init_browser_pool() -> None:
-    global _pw_instance, _browser
-    if not get_settings().enable_live_scan:
-        return
-    try:
-        import importlib
-        _pw = importlib.import_module(_PW_MOD)
-        _pw_instance = await _pw.async_playwright().start()
-        _browser = await _pw_instance.chromium.launch(args=CHROMIUM_LAUNCH_ARGS)
-        log_info("Browser pool initialised")
-    except Exception as exc:
-        log_error(f"Browser pool init failed: {exc}", exc=exc)
-
-
-async def close_browser_pool() -> None:
-    global _pw_instance, _browser
-    if _browser:
-        await _browser.close()
-        _browser = None
-    if _pw_instance:
-        await _pw_instance.stop()
-        _pw_instance = None
-        log_info("Browser pool closed")
-
 
 def _criterion(tags: list[str]) -> str:
     for tag in tags:
@@ -229,27 +206,12 @@ async def _guarded_route(route: Any) -> None:
     await route.continue_()
 
 
-async def _acquire_browser() -> tuple[Any, bool]:
-    """Return (browser, own_browser). Reuses the warm shared browser when the
-    pool is initialised, otherwise launches a fresh one the caller must close."""
-    global _browser
-    if _browser is None or not _browser.is_connected():
-        import importlib
-        _pw = importlib.import_module(_PW_MOD)
-        pw = await _pw.async_playwright().start()
-        browser = await pw.chromium.launch(args=CHROMIUM_LAUNCH_ARGS)
-        return browser, True
-    return _browser, False
-
-
 async def _run_axe(url: str, axe_path: Path, storage_state: dict | None = None) -> tuple[list[dict], str]:
-    """Run axe-core against url, reusing the warm shared browser. Returns the
-    violations and the final URL (post-redirect) so callers can detect a
-    login-wall redirect."""
+    """Run axe-core against url in a fresh context. Returns the violations and
+    the final URL (post-redirect) so callers can detect a login-wall redirect."""
     settings = get_settings()
-    browser, own_browser = await _acquire_browser()
 
-    try:
+    async with browser_session() as browser:
         # storage_state injects the caller's session (cookies/localStorage) for
         # this scan only; the context is discarded immediately afterwards.
         context = await browser.new_context(storage_state=storage_state)
@@ -268,9 +230,27 @@ async def _run_axe(url: str, axe_path: Path, storage_state: dict | None = None) 
             return violations, final_url
         finally:
             await context.close()
-    finally:
-        if own_browser:
-            await browser.close()
+
+
+async def _run_axe_bounded(url: str, axe_path: Path, storage_state: dict | None) -> tuple[list[dict], str]:
+    """Local scans run as before. Remote scans are capped at
+    SCAN_TOTAL_TIMEOUT_S (staying inside one billed unit) and retried once
+    after a mid-scan disconnect if enough of that budget remains."""
+    if not remote_mode():
+        return await _run_axe(url, axe_path, storage_state)
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + get_settings().scan_total_timeout_s
+    try:
+        try:
+            return await asyncio.wait_for(_run_axe(url, axe_path, storage_state), deadline - loop.time())
+        except BrowserUnavailable as exc:
+            if exc.kind != "disconnected" or deadline - loop.time() < RETRY_MIN_SECONDS:
+                raise
+            log_warning(f"Retrying scan after remote browser disconnect for url={url}")
+            return await asyncio.wait_for(_run_axe(url, axe_path, storage_state), deadline - loop.time())
+    except TimeoutError:
+        raise BrowserUnavailable("timeout") from None
 
 
 def _looks_like_login_wall(requested_url: str, final_url: str) -> bool:
@@ -292,7 +272,7 @@ async def scan_url(url: str, storage_state: dict | None = None) -> ScanResponse:
             return fallback_scan(url, "Local axe-core bundle is missing; demo results shown.")
 
         async with _SCAN_SEMAPHORE:
-            violations, final_url = await _run_axe(url, axe_path, storage_state)
+            violations, final_url = await _run_axe_bounded(url, axe_path, storage_state)
 
         issues = normalize_violations(violations)
         notice = None
@@ -303,6 +283,9 @@ async def scan_url(url: str, storage_state: dict | None = None) -> ScanResponse:
                 "Provide a valid session (storage state) to scan authenticated content."
             )
         return ScanResponse(url=url, issues=issues, summary=_summary(issues), source="live", notice=notice)
+    except BrowserUnavailable as exc:
+        log_warning(f"Live scan unavailable for url={url}: remote browser {exc.kind}")
+        return fallback_scan(url, f"Live scan unavailable; demo results shown. {BROWSER_NOTICES[exc.kind]}")
     except Exception as exc:
         log_error(f"Live scan failed for url={url}: {type(exc).__name__}: {exc}", exc=exc)
         return fallback_scan(url, f"Live scan failed; demo results shown. {type(exc).__name__}")

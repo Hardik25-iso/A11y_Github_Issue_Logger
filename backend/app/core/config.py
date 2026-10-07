@@ -20,6 +20,10 @@ class Settings:
     enable_live_scan: bool
     scan_timeout_ms: int
     block_heavy_scan_resources: bool
+    # Remote browser (CDP). An empty endpoint means a local Chromium.
+    browser_ws_endpoint: str = ""
+    browser_connect_timeout_ms: int = 8000
+    scan_total_timeout_s: float = 28
 
     @property
     def default_repo(self) -> str:
@@ -49,6 +53,9 @@ class Settings:
             enable_live_scan=os.getenv("ENABLE_LIVE_SCAN", "false").lower() == "true",
             scan_timeout_ms=int(os.getenv("SCAN_TIMEOUT_MS", "30000")),
             block_heavy_scan_resources=os.getenv("BLOCK_HEAVY_SCAN_RESOURCES", "true").lower() == "true",
+            browser_ws_endpoint=os.getenv("BROWSER_WS_ENDPOINT", "").strip(),
+            browser_connect_timeout_ms=int(os.getenv("BROWSER_CONNECT_TIMEOUT_MS", "8000")),
+            scan_total_timeout_s=float(os.getenv("SCAN_TOTAL_TIMEOUT_S", "28")),
         )
 
 
