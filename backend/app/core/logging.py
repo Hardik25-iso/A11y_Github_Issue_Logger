@@ -6,14 +6,30 @@ import uuid
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# Patterns that must never appear in log output
-_SECRET_RE = re.compile(r"(Bearer\s+)(\S+)|(sk-ant-\S+|ghp_\S+|github_pat_\S+)", re.IGNORECASE)
+# Patterns that must never appear in log output. URL query credentials cover
+# remote-browser endpoints like wss://host?token=..., which Playwright echoes
+# back in connection errors.
+_SECRET_RE = re.compile(
+    r"(Bearer\s+|[?&](?:token|api[_-]?key)=)([^\s&'\"]+)|(sk-ant-\S+|ghp_\S+|github_pat_\S+)",
+    re.IGNORECASE,
+)
 
 
 def _redact(match: re.Match) -> str:
-    if match.group(1):  # "Bearer <token>" — keep the prefix, redact only the token
+    if match.group(1):  # "Bearer <token>" / "?token=<token>" — keep the prefix
         return f"{match.group(1)}[REDACTED]"
     return "[REDACTED]"
+
+
+class _RedactTracebacks(logging.Filter):
+    """Tracebacks are rendered by the handler, after _safe() has run on the
+    message, and they repeat the exception text. Pre-render them redacted:
+    every formatter reuses record.exc_text when it is already set."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.exc_info and not record.exc_text:
+            record.exc_text = _safe(logging.Formatter().formatException(record.exc_info))
+        return True
 
 
 logging.basicConfig(
@@ -22,6 +38,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("a11y_logger")
+logger.addFilter(_RedactTracebacks())
 
 
 def _safe(message: str) -> str:
