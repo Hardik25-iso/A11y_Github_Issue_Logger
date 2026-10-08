@@ -45,9 +45,10 @@ _AUTH_RE = re.compile(r"\b(401|403)\b|unauthori[sz]ed|forbidden", re.IGNORECASE)
 # Warm local browser, started by init_browser_pool().
 _pw_instance: Any = None
 _browser: Any = None
-# Playwright driver for remote connections, tied to the event loop it was
-# started on (a new loop, e.g. per asyncio.run in tests, needs a new driver).
-_remote_pw: Any = None
+# Start task for the Playwright driver used by remote connections, tied to
+# the event loop it was started on (a new loop, e.g. per asyncio.run in
+# tests, needs a new driver). A task, so concurrent callers share one start.
+_remote_pw_task: asyncio.Task | None = None
 _remote_pw_loop: asyncio.AbstractEventLoop | None = None
 _quota_cooldown_until = 0.0
 
@@ -74,7 +75,15 @@ async def init_browser_pool() -> None:
     if not get_settings().enable_live_scan:
         return
     if remote_mode():
-        log_info("Remote browser configured; connecting per scan")
+        # Start only the Playwright driver (no connection, so no quota). On a
+        # 0.1-CPU host it takes ~15 s; awaiting it here keeps that out of the
+        # first scan's budget. (Starting it in the background measured no
+        # faster: the driver and the server compete for the same CPU.)
+        try:
+            await ensure_remote_driver()
+            log_info("Remote browser configured; connecting per scan")
+        except Exception as exc:
+            log_error(f"Playwright driver start failed: {exc}", exc=exc)
         return
     try:
         _pw = importlib.import_module(_PW_MOD)
@@ -86,7 +95,7 @@ async def init_browser_pool() -> None:
 
 
 async def close_browser_pool() -> None:
-    global _pw_instance, _browser, _remote_pw, _remote_pw_loop
+    global _pw_instance, _browser, _remote_pw_task, _remote_pw_loop
     if _browser:
         await _browser.close()
         _browser = None
@@ -94,10 +103,12 @@ async def close_browser_pool() -> None:
         await _pw_instance.stop()
         _pw_instance = None
         log_info("Browser pool closed")
-    if _remote_pw:
-        await _remote_pw.stop()
-        _remote_pw = None
-        _remote_pw_loop = None
+    if _remote_pw_task is not None:
+        task, _remote_pw_task, _remote_pw_loop = _remote_pw_task, None, None
+        try:
+            await (await task).stop()
+        except Exception:
+            pass  # the driver never started, or is already gone
 
 
 def local_browser_ready() -> bool:
@@ -147,14 +158,31 @@ async def _remote_session() -> AsyncIterator[Any]:
             pass  # already gone; the provider reaps the session itself
 
 
-async def _remote_driver() -> Any:
-    global _remote_pw, _remote_pw_loop
+async def _start_driver() -> Any:
+    _pw = importlib.import_module(_PW_MOD)
+    return await _pw.async_playwright().start()
+
+
+def _remote_driver_task() -> asyncio.Task:
+    global _remote_pw_task, _remote_pw_loop
     loop = asyncio.get_running_loop()
-    if _remote_pw is None or _remote_pw_loop is not loop:
-        _pw = importlib.import_module(_PW_MOD)
-        _remote_pw = await _pw.async_playwright().start()
+    stale = _remote_pw_task is None or _remote_pw_loop is not loop
+    failed = (
+        _remote_pw_task is not None
+        and _remote_pw_task.done()
+        and (_remote_pw_task.cancelled() or _remote_pw_task.exception() is not None)
+    )
+    if stale or failed:
+        _remote_pw_task = loop.create_task(_start_driver())
         _remote_pw_loop = loop
-    return _remote_pw
+    assert _remote_pw_task is not None
+    return _remote_pw_task
+
+
+async def ensure_remote_driver() -> Any:
+    """Wait for the driver to be running. Shielded, so a scan cancelled by its
+    time budget never cancels a start that later scans depend on."""
+    return await asyncio.shield(_remote_driver_task())
 
 
 def classify_connect_error(exc: BaseException) -> str:
@@ -173,7 +201,7 @@ async def _connect_remote() -> Any:
     if quota_cooldown_remaining():
         raise BrowserUnavailable("quota")
     settings = get_settings()
-    driver = await _remote_driver()
+    driver = await ensure_remote_driver()
     for attempt in (1, 2):
         try:
             return await driver.chromium.connect_over_cdp(

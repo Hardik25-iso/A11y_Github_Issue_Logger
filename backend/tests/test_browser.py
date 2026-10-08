@@ -77,7 +77,7 @@ def fake_pw(monkeypatch):
     monkeypatch.setattr(browser_mod, "_PW_MOD", "fake_playwright")
     monkeypatch.setattr(browser_mod, "CONNECT_RETRY_DELAY_SECONDS", 0)
     monkeypatch.setattr(browser_mod, "_browser", None)
-    monkeypatch.setattr(browser_mod, "_remote_pw", None)
+    monkeypatch.setattr(browser_mod, "_remote_pw_task", None)
     monkeypatch.setattr(browser_mod, "_remote_pw_loop", None)
     monkeypatch.setattr(browser_mod, "_quota_cooldown_until", 0.0)
 
@@ -217,10 +217,15 @@ def test_token_never_reaches_logs(remote, fake_pw, caplog):
 # --- scanner integration -----------------------------------------------------
 
 
-def _live_scan(monkeypatch, fake_run_axe):
+def _live_scan(monkeypatch, fake_run_axe, driver_start_seconds=0.0):
     monkeypatch.setenv("ENABLE_LIVE_SCAN", "true")
     monkeypatch.setattr(scanner, "validate_resolved_public_url", lambda url: url)
     monkeypatch.setattr(scanner, "_run_axe", fake_run_axe)
+
+    async def fake_driver():
+        await asyncio.sleep(driver_start_seconds)
+
+    monkeypatch.setattr(scanner, "ensure_remote_driver", fake_driver)
     return asyncio.run(scanner.scan_url("https://example.com/"))
 
 
@@ -270,6 +275,32 @@ def test_scan_over_total_budget_times_out(remote, monkeypatch):
     result = _live_scan(monkeypatch, slow)
     assert result.source == "fallback"
     assert "took too long" in result.notice
+
+
+def test_driver_startup_is_outside_the_scan_budget(remote, monkeypatch):
+    # After a cold boot the driver may still be starting; that wait must not
+    # eat the scan's browser-time budget.
+    monkeypatch.setenv("SCAN_TOTAL_TIMEOUT_S", "0.2")
+
+    async def quick(*args):
+        return [], "https://example.com/"
+
+    assert _live_scan(monkeypatch, quick, driver_start_seconds=0.5).source == "live"
+
+
+def test_driver_start_is_shared_and_survives_a_cancelled_caller(fake_pw):
+    state = fake_pw([])
+
+    async def scenario():
+        waiter = asyncio.create_task(browser_mod.ensure_remote_driver())
+        await asyncio.sleep(0)
+        waiter.cancel()  # e.g. a scan hitting its time budget
+        driver = await browser_mod.ensure_remote_driver()
+        return driver, await browser_mod.ensure_remote_driver()
+
+    first, second = asyncio.run(scenario())
+    assert first is second
+    assert len(state["drivers"]) == 1
 
 
 def test_local_scan_has_no_total_budget(monkeypatch):

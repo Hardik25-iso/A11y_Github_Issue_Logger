@@ -8,7 +8,7 @@ from backend.app.core.config import get_settings
 from backend.app.core.logging import log_error, log_warning
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import ScanIssue, ScanResponse
-from backend.app.services.browser import BrowserUnavailable, browser_session, remote_mode
+from backend.app.services.browser import BrowserUnavailable, browser_session, ensure_remote_driver, remote_mode
 
 # Cap how many element screenshots we capture per scan to bound response size
 # and scan time. The most severe violations come first after normalization.
@@ -222,8 +222,10 @@ async def _run_axe(url: str, axe_path: Path, storage_state: dict | None = None) 
             validate_resolved_public_url(page.url)
             final_url = page.url
             await page.add_script_tag(path=str(axe_path))
-            result = await page.evaluate("async () => await axe.run(document)")
-            violations = result.get("violations", [])
+            # Return only the violations: the full result (passes, incomplete,
+            # inapplicable, each with node HTML) is often 1 MB+, and moving it
+            # into Python dominated scan time on a 0.1-CPU host.
+            violations = await page.evaluate("async () => (await axe.run(document)).violations || []")
             for violation in violations[:MAX_SCREENSHOTS]:
                 selector = _node_selector(violation.get("nodes", []))
                 violation["screenshot"] = await _capture_element_screenshot(page, selector)
@@ -239,6 +241,9 @@ async def _run_axe_bounded(url: str, axe_path: Path, storage_state: dict | None)
     if not remote_mode():
         return await _run_axe(url, axe_path, storage_state)
 
+    # The budget covers browser time only; a driver still starting after a
+    # cold boot is waited for first, outside the budget.
+    await ensure_remote_driver()
     loop = asyncio.get_running_loop()
     deadline = loop.time() + get_settings().scan_total_timeout_s
     try:
