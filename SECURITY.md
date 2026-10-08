@@ -21,13 +21,27 @@ There is a time-of-check / time-of-use gap between the DNS resolution validation
 - The per-route Playwright guard performs a second DNS resolution at request time for every sub-request, substantially narrowing the window
 - `ENABLE_LIVE_SCAN` is `false` by default; the scan endpoint returns demo data unless explicitly enabled
 
+### Remote browser mode (`BROWSER_WS_ENDPOINT`)
+
+When scans run in a hosted browser over CDP, every layer above still runs on
+our server: the route guard intercepts each sub-request over the CDP
+connection and validates it before the hosted browser may send it. The
+browser's own DNS lookup now happens on the provider's network, so the
+rebinding gap above still applies, but a request that slips through reaches
+the provider's network, not ours.
+
+**Third-party data flow:** the scanned page, and any `storage_state` session
+cookies supplied for an authenticated scan, pass through the browser provider
+(e.g. Browserless). The session is closed after each scan; nothing is stored
+by this app, but operators should be aware the provider processes it.
+
 **Accepted risk:** Full SSRF-proof protection against DNS rebinding requires a dedicated egress proxy with its own IP-based ACLs (e.g. Smokescreen). This is out of scope for this deployment tier but documented here for operators who enable live scanning in a sensitive network environment.
 
 ## Secret Handling
 
 - All credentials (`GITHUB_TOKEN`, `ANTHROPIC_API_KEY`) live only in server-side environment variables
 - The `/api/config` endpoint returns boolean flags (`github_configured`, `ai_configured`) — never the values
-- The structured logger in `backend/app/core/logging.py` redacts `sk-ant-*`, `ghp_*`, `github_pat_*`, and `Bearer <token>` patterns before any log line is written
+- The structured logger in `backend/app/core/logging.py` redacts `sk-ant-*`, `ghp_*`, `github_pat_*`, `Bearer <token>`, and URL query credentials (`?token=`, `?apiKey=`) before any log line is written, including inside logged tracebacks
 - `.env` is in `.gitignore`; `.env.example` contains only key names with no values
 
 ## Rate Limiting
