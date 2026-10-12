@@ -9,6 +9,11 @@ browser could not reach the test machine's loopback anyway.
 
 Run manually:
     ENABLE_LIVE_SCAN=true python -m pytest backend/tests/test_scanner_live.py -v
+
+Against a remote browser, also set BROWSER_WS_ENDPOINT. From a machine far
+from the provider (e.g. ~250 ms round trips), raise SCAN_TOTAL_TIMEOUT_S
+(e.g. 110): a scan makes ~100 round trips and would exceed the 28 s default
+cap, which is sized for a server near the provider.
 """
 
 import asyncio

@@ -121,6 +121,14 @@ deployment scans in a hosted browser over CDP and ships a slim image
 4. Deploy, then check `https://<service>.onrender.com/health` reports `"browser": "remote"`
 5. Point the `/api` rewrite in `frontend/vercel.json` at the Render URL
 
+Results match local Chromium on the parity pages
+(`backend/scripts/compare_scan_paths.py`), with one known difference: the
+hosted browser runs a newer Chrome (153 vs Playwright's bundled 136), so
+rendering-sensitive rules such as `color-contrast` can differ by an element on
+complex pages (one of five pages tested). Keep the Render service in a region
+near the browser endpoint (Oregon for `production-sfo`): a scan makes ~100
+round trips to it.
+
 The free service sleeps after 15 minutes idle and takes about a minute to
 wake. When the Browserless quota runs out, scans return clearly labeled demo
 results with a "quota is used up" notice until it resets.
