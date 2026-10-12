@@ -16,7 +16,8 @@ from backend.app.core.config import get_settings
 from backend.app.core.logging import log_info, log_warning
 from backend.app.core.security import validate_resolved_public_url
 from backend.app.models import LoginResponse, LoginSelectors
-from backend.app.services.scanner import _SCAN_SEMAPHORE, LOGIN_INDICATORS, _acquire_browser
+from backend.app.services.browser import BrowserUnavailable, browser_session
+from backend.app.services.scanner import _SCAN_SEMAPHORE, BROWSER_NOTICES, LOGIN_INDICATORS
 
 # Auto-detection candidates, tried in order. Callers can override any of them
 # via LoginSelectors when detection fails on an unusual form.
@@ -86,19 +87,17 @@ async def login_and_capture_session(
     overrides = selectors or LoginSelectors()
     try:
         validate_resolved_public_url(login_url)
-        async with _SCAN_SEMAPHORE:
-            browser, own_browser = await _acquire_browser()
+        async with _SCAN_SEMAPHORE, browser_session() as browser:
+            # Fresh context per login; discarded below so nothing outlives
+            # the request except the returned storage_state.
+            context = await browser.new_context()
             try:
-                # Fresh context per login; discarded below so nothing outlives
-                # the request except the returned storage_state.
-                context = await browser.new_context()
-                try:
-                    return await _perform_login(context, login_url, username, password, overrides, settings)
-                finally:
-                    await context.close()
+                return await _perform_login(context, login_url, username, password, overrides, settings)
             finally:
-                if own_browser:
-                    await browser.close()
+                await context.close()
+    except BrowserUnavailable as exc:
+        log_warning(f"Login unavailable for url={login_url}: remote browser {exc.kind}")
+        return _failure(f"The login could not be attempted. {BROWSER_NOTICES[exc.kind]}")
     except Exception as exc:
         # Only the exception type is reported: Playwright error strings can
         # embed page content or filled values, and credentials must never

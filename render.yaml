@@ -1,0 +1,44 @@
+# Render Blueprint for the backend on the free tier.
+# Secrets marked sync: false are entered in the Render dashboard on first
+# deploy and are never committed.
+services:
+  - type: web
+    name: a11y-github-issue-logger-api
+    runtime: docker
+    plan: free
+    region: oregon # closest to the Browserless production-sfo endpoint
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    # /livez only: /health is a readiness report, and the free tier wakes on
+    # any request anyway.
+    healthCheckPath: /livez
+    autoDeploy: true
+    envVars:
+      - key: ENABLE_LIVE_SCAN
+        value: "true"
+      # wss://production-sfo.browserless.io?token=YOUR_TOKEN
+      - key: BROWSER_WS_ENDPOINT
+        sync: false
+      # Browserless free tier allows 1-2 concurrent browsers; 0.1 CPU here.
+      - key: BROWSER_MAX_CONCURRENCY
+        value: "1"
+      - key: SCAN_TIMEOUT_MS
+        value: "20000"
+      # Stay inside one 30 s Browserless unit per scan.
+      - key: SCAN_TOTAL_TIMEOUT_S
+        value: "28"
+      - key: BLOCK_HEAVY_SCAN_RESOURCES
+        value: "true"
+      # e.g. https://your-app.vercel.app
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: AI_PROVIDER
+        value: template
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO_OWNER
+        sync: false
+      - key: GITHUB_REPO_NAME
+        sync: false

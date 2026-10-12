@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
 from backend.app.core.config import get_settings
-from backend.app.services.scanner import CHROMIUM_LAUNCH_ARGS, _PW_MOD, axe_script_path
+from backend.app.services.browser import local_browser_ready, quota_cooldown_remaining, remote_mode
+from backend.app.services.scanner import axe_script_path
 
 router = APIRouter()
 
@@ -20,18 +21,14 @@ async def health() -> dict:
 
     checks["axe_bundle"] = "ok" if axe_script_path().exists() else "missing"
 
-    if settings.enable_live_scan:
-        try:
-            import importlib
-            _pw = importlib.import_module(_PW_MOD)
-            async with _pw.async_playwright() as p:
-                browser = await p.chromium.launch(args=CHROMIUM_LAUNCH_ARGS)
-                await browser.close()
-            checks["browser"] = "ok"
-        except Exception as exc:
-            checks["browser"] = f"error: {type(exc).__name__}"
-    else:
+    # Never launches or connects: a remote probe would spend browser quota on
+    # every health check, and the warm local browser shows real readiness.
+    if not settings.enable_live_scan:
         checks["browser"] = "disabled"
+    elif remote_mode():
+        checks["browser"] = "error: quota cooldown" if quota_cooldown_remaining() else "remote"
+    else:
+        checks["browser"] = "ok" if local_browser_ready() else "error: local browser not running"
 
     if settings.ai_provider == "anthropic":
         checks["ai"] = "configured" if settings.anthropic_api_key else "missing_key"

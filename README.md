@@ -85,6 +85,9 @@ Create a `.env` file in the repo root (copy from `.env.example`).
 | `OLLAMA_BASE_URL` | Ollama only | Default: `http://localhost:11434` |
 | `OLLAMA_MODEL` | Ollama only | Default: `qwen3:8b` |
 | `ENABLE_LIVE_SCAN` | No | `true` to enable real Playwright scanning (default: `false`) |
+| `BROWSER_WS_ENDPOINT` | No | CDP endpoint of a hosted browser (e.g. Browserless). Blank = local Chromium |
+| `BROWSER_MAX_CONCURRENCY` | No | Concurrent scans (default: `3`; `1` on the Browserless free tier) |
+| `SCAN_TOTAL_TIMEOUT_S` | No | Per-scan cap for remote scans (default: `28`) |
 | `FRONTEND_ORIGINS` | Production | Your frontend URL for CORS (e.g. `https://your-app.vercel.app`) |
 
 **GitHub token setup:** Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens. Select your repo, grant **Issues: read and write**. No other scopes needed.
@@ -100,6 +103,35 @@ The tool works without any AI key — it falls back to a deterministic template 
 ---
 
 ## Deployment
+
+### Backend → Render (free tier)
+
+Render's free web service has 512 MB RAM, too little for Chromium, so this
+deployment scans in a hosted browser over CDP and ships a slim image
+(`Dockerfile.render`, no browser binaries).
+
+1. Create a free [Browserless](https://www.browserless.io) account (no card
+   required; 1,000 units/month, about one scan each) and copy your API token
+2. In [Render](https://render.com), choose **New → Blueprint** and select this
+   repository; Render reads `render.yaml`
+3. Enter the secrets it prompts for (never commit these):
+   - `BROWSER_WS_ENDPOINT` — `wss://production-sfo.browserless.io?token=YOUR_TOKEN`
+   - `FRONTEND_ORIGINS` — your Vercel URL
+   - `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, and `GROQ_API_KEY` if you use Groq
+4. Deploy, then check `https://<service>.onrender.com/health` reports `"browser": "remote"`
+5. Point the `/api` rewrite in `frontend/vercel.json` at the Render URL
+
+Results match local Chromium on the parity pages
+(`backend/scripts/compare_scan_paths.py`), with one known difference: the
+hosted browser runs a newer Chrome (153 vs Playwright's bundled 136), so
+rendering-sensitive rules such as `color-contrast` can differ by an element on
+complex pages (one of five pages tested). Keep the Render service in a region
+near the browser endpoint (Oregon for `production-sfo`): a scan makes ~100
+round trips to it.
+
+The free service sleeps after 15 minutes idle and takes about a minute to
+wake. When the Browserless quota runs out, scans return clearly labeled demo
+results with a "quota is used up" notice until it resets.
 
 ### Backend → Railway
 

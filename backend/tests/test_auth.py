@@ -2,11 +2,12 @@
 
 Playwright is mocked with in-memory fakes, mirroring how the scanner tests
 avoid real browsers. The live path is exercised by monkeypatching
-_acquire_browser and the resolved-URL check (DNS is unavailable in CI).
+browser_session and the resolved-URL check (DNS is unavailable in CI).
 """
 
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +16,7 @@ from backend.app.main import app
 from backend.app.models import LoginSelectors
 from backend.app.services import auth as auth_service
 from backend.app.services.auth import login_and_capture_session
+from backend.app.services.browser import BrowserUnavailable
 
 client = TestClient(app)
 
@@ -137,10 +139,11 @@ def _login(page, monkeypatch, selectors=None):
     monkeypatch.setenv("ENABLE_LIVE_SCAN", "true")
     browser = FakeBrowser(page)
 
-    async def fake_acquire():
-        return browser, False
+    @asynccontextmanager
+    async def fake_session():
+        yield browser
 
-    monkeypatch.setattr(auth_service, "_acquire_browser", fake_acquire)
+    monkeypatch.setattr(auth_service, "browser_session", fake_session)
     monkeypatch.setattr(auth_service, "validate_resolved_public_url", lambda url: url)
     result = asyncio.run(
         login_and_capture_session("https://app.example.com/login", "tester@example.com", PASSWORD, selectors)
@@ -198,6 +201,27 @@ def test_login_uses_custom_selector_overrides(monkeypatch):
     result, _ = _login(page, monkeypatch, selectors)
     assert result.success is True
     assert page.username_locator.filled_with == "tester@example.com"
+
+
+def test_login_reports_exhausted_browser_quota_without_leaking(monkeypatch, caplog):
+    monkeypatch.setenv("ENABLE_LIVE_SCAN", "true")
+
+    @asynccontextmanager
+    async def exhausted_session():
+        raise BrowserUnavailable("quota")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(auth_service, "browser_session", exhausted_session)
+    monkeypatch.setattr(auth_service, "validate_resolved_public_url", lambda url: url)
+    with caplog.at_level(logging.INFO):
+        result = asyncio.run(
+            login_and_capture_session("https://app.example.com/login", "tester@example.com", PASSWORD)
+        )
+    assert result.success is False
+    assert result.source == "live"
+    assert "quota is used up" in result.notice
+    assert PASSWORD not in result.model_dump_json()
+    assert PASSWORD not in caplog.text
 
 
 def test_login_disabled_returns_labeled_fallback(monkeypatch):
